@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true
+  },
+  "env": {
+    "GIT_ALLOW_PROTOCOL": "file:git:http:https:ssh"
+  }
+}

@@ -1,0 +1,718 @@
+/* Paleta y tipografía — Master Handoff sección 3 (CERRADO) */
+:root {
+  --navy: #0b1832;
+  --navy-deep: #060b18;
+  --gold: #c9a24b;
+  --gold-light: #e8ce8f;
+  --ink: #f4f1e8;
+  --hairline: rgba(201, 162, 75, 0.35);
+}
+
+html {
+  height: 100%;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100%;
+  color: var(--ink);
+  background: var(--navy-deep);
+  font-family: var(--font-ui), "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ---------- Fallback semántico (sección 10, CERRADO) ---------- */
+/* Siempre presente en el HTML servido; se oculta visualmente solo cuando el
+   mundo 3D toma el control en el cliente (mejora progresiva, nunca al revés). */
+.tmcFallback {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 64px 24px;
+}
+.tmcFallback h1 {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(32px, 6vw, 56px);
+  color: var(--gold-light);
+  letter-spacing: 0.02em;
+}
+.tmcFallback p {
+  margin-top: 12px;
+  color: var(--ink);
+  opacity: 0.85;
+}
+.hotspotFallbackNav ul {
+  list-style: none;
+  margin-top: 32px;
+  display: grid;
+  gap: 12px;
+}
+.hotspotFallbackNav a {
+  display: block;
+  padding: 16px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+}
+.hotspotFallbackNav strong {
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+}
+.hotspotFallbackNav span {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  opacity: 0.75;
+}
+body:has(.worldRoot) .tmcFallback {
+  display: none;
+}
+
+/* ---------- Mundo 3D (sección 5/9, CERRADO) ---------- */
+.worldRoot {
+  position: relative;
+}
+.worldFixedLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+.worldCanvas {
+  position: absolute;
+  inset: 0;
+  outline: none;
+}
+
+/* ---------- Header corporativo (sección 5.3, CERRADO) ---------- */
+.tmcHeader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px clamp(16px, 4vw, 48px);
+  pointer-events: none;
+}
+.tmcHeader__home {
+  pointer-events: auto;
+  font-family: var(--font-display), serif;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  color: var(--gold-light);
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tmcHeader__nav {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2.2vw, 30px);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.tmcHeader__navItem {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  opacity: 0.85;
+  padding: 7px 2px;
+  border-bottom: 1px solid transparent;
+  transition: opacity 0.2s, border-color 0.2s;
+}
+.tmcHeader__navItem:hover,
+.tmcHeader__navItem[aria-expanded="true"] {
+  opacity: 1;
+  border-color: var(--gold);
+}
+.tmcHeader__inquiry {
+  pointer-events: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  color: var(--navy-deep);
+  background: var(--gold);
+  border: none;
+  border-radius: 100px;
+  padding: 9px 18px;
+  transition: background 0.2s, transform 0.2s;
+}
+.tmcHeader__inquiry:hover {
+  background: var(--gold-light);
+  transform: translateY(-1px);
+}
+
+.tmcOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 11, 24, 0.72);
+  backdrop-filter: blur(6px);
+  padding: 24px;
+}
+.tmcOverlay__panel {
+  position: relative;
+  max-width: 480px;
+  width: 100%;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--navy);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 40px 36px;
+}
+.tmcOverlay__close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-size: 22px;
+  color: var(--gold-light);
+  line-height: 1;
+}
+.tmcOverlay__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+.tmcOverlay__title {
+  font-family: var(--font-display), serif;
+  font-size: clamp(24px, 4vw, 34px);
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+.tmcOverlay__body {
+  color: var(--ink);
+  opacity: 0.85;
+  line-height: 1.6;
+}
+.tmcOverlay__body + .tmcOverlay__body {
+  margin-top: 10px;
+}
+.tmcOverlay__channels {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 18px;
+}
+.tmcOverlay__channel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--gold-light);
+  opacity: 0.75;
+}
+
+/* ---------- Home — narrativa completa (evolución §8, Master §4.1). Panel
+   lateral izquierdo, mismo patrón que .unitPanel, visible solo en el
+   waypoint hero. ---------- */
+.homePanel__tab {
+  position: absolute;
+  left: clamp(16px, 4vw, 48px);
+  bottom: 110px;
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 100px;
+  background: rgba(6, 11, 24, 0.6);
+  backdrop-filter: blur(3px);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--gold-light);
+  pointer-events: auto;
+  transition: border-color 0.2s, background 0.2s;
+}
+.homePanel__tab:hover {
+  border-color: var(--gold);
+  background: rgba(201, 162, 75, 0.16);
+}
+.homePanel__tabIcon {
+  color: var(--gold);
+}
+.homePanel {
+  position: absolute;
+  top: 96px;
+  left: clamp(16px, 4vw, 48px);
+  bottom: 96px;
+  z-index: 18;
+  width: min(360px, 88vw);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: rgba(6, 11, 24, 0.72);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+  overflow: hidden;
+}
+.homePanel__close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 1;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--gold-light);
+}
+.homePanel__scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding: 22px 22px 28px;
+}
+.homePanel__section {
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--hairline);
+}
+.homePanel__section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.homePanel__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.homePanel__title {
+  font-family: var(--font-display), serif;
+  font-size: clamp(19px, 2vw, 23px);
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.homePanel__body {
+  font-size: 13px;
+  line-height: 1.6;
+  opacity: 0.85;
+}
+.homePanel__body + .homePanel__body {
+  margin-top: 6px;
+}
+.homePanel__standard {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.homePanel__standard li {
+  font-family: var(--font-display), serif;
+  font-size: 15px;
+  color: var(--gold-light);
+}
+.homePanel__flow {
+  list-style: decimal;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  opacity: 0.85;
+  margin: 14px 0 18px;
+}
+
+/* ---------- Private Inquiry form (evolución §19) ---------- */
+.privateInquiry__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.privateInquiry__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--gold-light);
+  opacity: 0.85;
+}
+.privateInquiry__field input,
+.privateInquiry__field textarea {
+  font-family: var(--font-ui), sans-serif;
+  font-size: 13px;
+  color: var(--ink);
+  background: rgba(244, 241, 232, 0.06);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.privateInquiry__field input:focus,
+.privateInquiry__field textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.privateInquiry__submit {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 10px 22px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--navy-deep);
+  background: var(--gold);
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.privateInquiry__submit:hover {
+  background: var(--gold-light);
+}
+.privateInquiry__confirm {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--gold-light);
+}
+
+/* ---------- Panel de contenido de operating unit (prompt maestro sección
+   6.3, CERRADO: integrado al mundo, no dashboard/modal genérico) ----------
+   Defecto confirmado por auditoría visual: una caja rectangular con borde
+   en los 4 lados + fondo uniforme + bullets redondos leía como sidebar de
+   app/dashboard, desconectada del mundo cinematográfico detrás. Corregido
+   sin cambiar la arquitectura (sigue siendo el mismo overlay 2D posicionado
+   sobre el Canvas, sección 8) — solo su tratamiento visual: sin caja
+   cerrada, un scrim en gradiente que se disuelve hacia la escena en vez de
+   un panel opaco, un solo hairline dorado a la izquierda (columna editorial,
+   no tarjeta), y las capabilities como lista tipográfica en vez de bullets
+   de punto redondo. */
+.unitPanel {
+  position: absolute;
+  top: 96px;
+  right: 0;
+  bottom: 96px;
+  z-index: 18;
+  width: min(400px, 92vw);
+  pointer-events: auto;
+  overflow: hidden;
+  background: linear-gradient(
+    to left,
+    rgba(6, 11, 24, 0.82) 0%,
+    rgba(6, 11, 24, 0.6) 55%,
+    rgba(6, 11, 24, 0) 100%
+  );
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 6%, #000 94%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 6%, #000 94%, transparent 100%);
+}
+.unitPanel__scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding: 40px clamp(28px, 5vw, 56px) 40px clamp(40px, 6vw, 72px);
+  border-left: 1px solid var(--hairline);
+  margin-left: clamp(24px, 5vw, 64px);
+}
+.unitPanel__descriptor {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.unitPanel__name {
+  font-family: var(--font-display), serif;
+  font-size: clamp(26px, 3vw, 34px);
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.unitPanel__intro {
+  font-family: var(--font-display), serif;
+  font-size: 16px;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--gold-light);
+  opacity: 0.95;
+  margin-bottom: 24px;
+}
+.unitPanel__capabilities {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px;
+  border-top: 1px solid rgba(201, 162, 75, 0.18);
+}
+.unitPanel__capabilities li {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  padding: 9px 0;
+  opacity: 0.8;
+  border-bottom: 1px solid rgba(201, 162, 75, 0.18);
+}
+.unitPanel__signature {
+  font-family: var(--font-display), serif;
+  font-size: 19px;
+  color: var(--gold-light);
+  margin-bottom: 10px;
+}
+.unitPanel__supporting {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  opacity: 0.6;
+  margin-bottom: 24px;
+}
+.unitPanel__extra {
+  font-size: 12px;
+  line-height: 1.7;
+  opacity: 0.65;
+  max-width: 42ch;
+}
+.unitPanel__extra + .unitPanel__extra {
+  margin-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .unitPanel,
+  .homePanel {
+    top: auto;
+    bottom: 90px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 40vh;
+  }
+  /* En mobile el panel es una franja horizontal inferior, no una columna
+     lateral — el degradado izquierda→derecha y el hairline vertical de
+     desktop no tienen sentido en esa forma; se cambia a un scrim uniforme
+     con esquinas redondeadas y padding simple. */
+  .unitPanel {
+    background: rgba(6, 11, 24, 0.85);
+    border-radius: 6px;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .unitPanel__scroll {
+    margin-left: 0;
+    border-left: none;
+    padding: 20px;
+  }
+}
+
+/* ---------- Hotspots (sección 6, CERRADO — marcadores 3D proyectados) ---------- */
+.hotspotMarker {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ---------- Logo oficial de operating unit (Master Handoff sección 11,
+   CERRADO) — PNG real (tmc-luxury.png, etc.), sin modificar. El hover/active
+   se resuelve en el contenedor (glow + escala); el <img> nunca lleva filter
+   ni recoloreo. ---------- */
+.unitLogo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.unitLogo__frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  transition: filter 0.25s, transform 0.25s;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.45));
+}
+.unitLogo__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.unitLogo__tagline {
+  max-width: 15ch;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.3;
+  letter-spacing: 0.03em;
+  color: var(--gold-light);
+  opacity: 0.9;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 1px 8px rgba(0, 0, 0, 0.7);
+  transition: opacity 0.25s;
+}
+.unitLogo:hover .unitLogo__frame,
+.unitLogo--active .unitLogo__frame {
+  transform: scale(1.08);
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 16px rgba(201, 162, 75, 0.55));
+}
+.unitLogo:hover .unitLogo__tagline,
+.unitLogo--active .unitLogo__tagline {
+  opacity: 1;
+}
+
+/* ---------- Footer (sección 5.5, CERRADO) ---------- */
+.tmcFooter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(16px, 3vw, 40px);
+  align-items: start;
+  padding: clamp(26px, 3.6vw, 40px) clamp(20px, 4vw, 56px) clamp(20px, 3vw, 28px);
+  border-top: 1px solid var(--hairline);
+  background: linear-gradient(to top, rgba(6, 11, 24, 0.92), transparent);
+}
+.tmcFooter__block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 6px 0;
+  text-align: left;
+  cursor: pointer;
+}
+.tmcFooter__block:hover .tmcFooter__heading {
+  color: var(--gold);
+}
+.tmcFooter__heading {
+  font-family: var(--font-display), serif;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: var(--gold-light);
+  transition: color 0.2s;
+}
+.tmcFooter__hint {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  opacity: 0.62;
+  line-height: 1.5;
+}
+
+/* ---------- Intro cinematográfica (sección 7, CERRADO) ---------- */
+.introRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--navy-deep);
+}
+.introPoster {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+.introContent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+  padding: 24px;
+}
+.intro__wordmark {
+  font-family: var(--font-display), serif;
+  font-size: clamp(56px, 14vw, 140px);
+  letter-spacing: 0.1em;
+  color: var(--gold-light);
+  opacity: 0;
+}
+.intro__tagline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.intro__line {
+  opacity: 0;
+  font-size: clamp(13px, 2.4vw, 18px);
+  letter-spacing: 0.18em;
+  color: var(--ink);
+}
+.intro__explore {
+  position: absolute;
+  bottom: 56px;
+  opacity: 0;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+}
+.skipIntro {
+  position: absolute;
+  bottom: 22px;
+  right: 24px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  opacity: 0.55;
+  padding: 8px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 100px;
+  transition: opacity 0.2s;
+}
+.skipIntro:hover {
+  opacity: 1;
+}
+
+@media (max-width: 720px) {
+  .tmcHeader__nav {
+    gap: 10px;
+  }
+  .tmcHeader__navItem {
+    font-size: 10px;
+  }
+  .tmcFooter {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 16px;
+  }
+  .tmcFooter__hint {
+    display: none;
+  }
+  .unitLogo__frame {
+    width: 52px;
+    height: 52px;
+  }
+  .unitLogo__tagline {
+    display: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
