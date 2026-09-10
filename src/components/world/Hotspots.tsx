@@ -15,6 +15,17 @@ import { useAspectCorrectionFactor } from "@/lib/world/useAspectCorrection";
 import { track } from "@/lib/analytics/track";
 import { OperatingUnitLogo } from "./OperatingUnitLogo";
 
+// NOTA (Fase 3, prompt maestro sección 6.2): se probó un cálculo dinámico de
+// diámetro de insignia = 74% del diámetro del aro (proporcional a LOGO_SIZE
+// corregido) y se revirtió — con las anclas actuales de hotspots.config.ts
+// (no modificables sin aprobación explícita), ese diámetro hace que las
+// insignias del mismo lado (Luxury/Cleaners, Transport/Project Office) se
+// superpongan entre sí, porque su separación vertical fue calibrada para el
+// tamaño fijo anterior (72px), no para 74% de un logo ya corregido. Aplicar
+// solo la proporción de diámetro sin también ajustar la distancia (también
+// especificada por el V3, ≈1.0x el diámetro) rompe el layout. Pendiente de
+// decisión — ver Gate Report de Fase 3.
+
 export function Hotspots() {
   const router = useRouter();
   const { lenisRef, activeWaypointId, setActiveWaypointId } = useWorld();

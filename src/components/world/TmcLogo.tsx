@@ -38,8 +38,12 @@ import { useAspectCorrectionFactor } from "@/lib/world/useAspectCorrection";
 
 // ---------- LOGO CONFIG (prompt maestro sección 7, CERRADO) ----------
 export const GOLD_COLOR = 0xc9a24b;
-/** Ancho objetivo del TMC en unidades de mundo (equivalente calibrado al 545 de referencia). */
-export const LOGO_SIZE = 30;
+/** Ancho objetivo del TMC en unidades de mundo (equivalente calibrado al 545 de referencia).
+ * Corrección Fase 3 (prompt maestro sección 7): el valor anterior (30) hacía que el
+ * logo ocupara ~46% del ancho del viewport en el hero — la referencia aprobada indica
+ * ~15%. Reducido ~40% (30 → 12) como punto de partida indicado por el V3; el aro se
+ * reescala automáticamente vía RING_SCALE, sin tocar RING_OUTER/RING_INNER. */
+export const LOGO_SIZE = 12;
 /** 1.0 más delgado, 2.0 grueso, 3.0 más grueso que 2.0 — solo afecta profundidad (Z). */
 export const LOGO_THICKNESS = 2.0;
 /** Grosor "natural" de referencia del GLB fuente — LOGO_THICKNESS se mide contra este. */
