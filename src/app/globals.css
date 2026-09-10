@@ -106,16 +106,24 @@ body:has(.worldRoot) .tmcFallback {
   outline: none;
 }
 
-/* ---------- Header corporativo (sección 5.3, CERRADO) ---------- */
+/* ---------- Header corporativo (sección 5.3, CERRADO). Distribución
+   (prompt maestro sección 6.2, guiada por TMC WEBSITE Base — solo layout,
+   nunca su copy): logo pequeño a la izquierda, los 5 items CENTRADOS con
+   separadores verticales delgados entre ellos, CTA Private Inquiry a la
+   extrema derecha (nunca un tagline ahí). Grid de 3 columnas en vez del
+   flex space-between anterior (que agrupaba nav+CTA juntos a la derecha,
+   sin centrar los 5 items) — mismo contenido/mismos overlays, solo se
+   corrige la distribución. ---------- */
 .tmcHeader {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   z-index: 20;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
+  gap: clamp(12px, 2vw, 24px);
   padding: 20px clamp(16px, 4vw, 48px);
   pointer-events: none;
 }
@@ -137,11 +145,12 @@ body:has(.worldRoot) .tmcFallback {
   pointer-events: auto;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: clamp(14px, 2.2vw, 30px);
   flex-wrap: wrap;
-  justify-content: flex-end;
 }
 .tmcHeader__navItem {
+  position: relative;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.14em;
@@ -156,7 +165,19 @@ body:has(.worldRoot) .tmcFallback {
   opacity: 1;
   border-color: var(--gold);
 }
+/* Separador vertical delgado entre items (no antes del primero). */
+.tmcHeader__navItem + .tmcHeader__navItem::before {
+  content: "";
+  position: absolute;
+  left: calc(clamp(14px, 2.2vw, 30px) / -2);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 12px;
+  background: var(--hairline);
+}
 .tmcHeader__inquiry {
+  justify-self: end;
   pointer-events: auto;
   font-size: 11px;
   font-weight: 600;
@@ -184,16 +205,33 @@ body:has(.worldRoot) .tmcFallback {
   backdrop-filter: blur(6px);
   padding: 24px;
 }
+/* Prompt maestro sección 6.2/6.3 (mismo criterio ya aplicado a .unitPanel):
+   antes una caja con borde en los 4 lados + fondo sólido + esquinas
+   redondeadas leía como una tarjeta de UI genérica. Al ser un diálogo
+   centrado (no un panel anclado a un borde), el mismo degradado
+   izquierda→derecha de .unitPanel no aplica aquí — en su lugar, un solo
+   hairline superior (regla editorial, no marco completo) y un fade de
+   máscara en los 4 bordes para que el panel se disuelva hacia el fondo
+   desenfocado en vez de cortar en seco como un rectángulo. El fondo de
+   respaldo (backdrop dim + blur) se mantiene — es función de diálogo
+   modal, no el defecto "dashboard" que se corrige aquí. */
 .tmcOverlay__panel {
   position: relative;
   max-width: 480px;
   width: 100%;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
-  background: var(--navy);
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(11, 24, 50, 0.95) 0%, rgba(11, 24, 50, 0.88) 100%);
+  border-top: 1px solid var(--hairline);
   padding: 40px 36px;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 3%,
+    #000 97%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 3%, #000 97%, transparent 100%);
 }
 .tmcOverlay__close {
   position: absolute;
@@ -620,6 +658,17 @@ body:has(.worldRoot) .tmcFallback {
   opacity: 0.62;
   line-height: 1.5;
 }
+.tmcFooter__socialIcons {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+  color: var(--gold-light);
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+.tmcFooter__block:hover .tmcFooter__socialIcons {
+  opacity: 1;
+}
 
 /* ---------- Intro cinematográfica (sección 7, CERRADO) ---------- */
 .introRoot {
@@ -686,6 +735,20 @@ body:has(.worldRoot) .tmcFallback {
 }
 .skipIntro:hover {
   opacity: 1;
+}
+
+/* Fase 4: el nav de 5 items + separadores no cabe en el ancho disponible
+   entre 721px y 800px (tablets angostas) sin envolver a una segunda línea,
+   lo que solapa con el mundo 3D debajo del header. Breakpoint dedicado y
+   acotado solo al nav — reutiliza los mismos valores compactos que ya usa
+   el breakpoint de 720px, sin tocar footer/hotspots/logo. */
+@media (max-width: 800px) {
+  .tmcHeader__nav {
+    gap: 10px;
+  }
+  .tmcHeader__navItem {
+    font-size: 10px;
+  }
 }
 
 @media (max-width: 720px) {

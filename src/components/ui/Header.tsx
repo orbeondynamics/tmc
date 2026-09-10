@@ -53,31 +53,31 @@ export function Header({ overlays: headerOverlays }: { overlays: OverlaySection[
               {item.label}
             </button>
           ))}
-          <button
-            type="button"
-            className="tmcHeader__inquiry"
-            onClick={() => {
-              track({ name: "cta_click", cta: "header_private_inquiry" });
-              navigateToWaypoint({
-                waypoint: heroWaypoint,
-                lenisRef,
-                onComplete: () => setActiveWaypointId("hero"),
-              });
-              router.push("/", { scroll: false });
-              setHomePanelOpen(true);
-              // El panel de Home (HomeContentPanel) tarda un frame en montar
-              // tras abrirse — se espera antes de desplazar el scroll interno
-              // del panel hasta la sección Private Inquiry.
-              requestAnimationFrame(() => {
-                document
-                  .getElementById("private-inquiry")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
-              });
-            }}
-          >
-            PRIVATE INQUIRY
-          </button>
         </nav>
+        <button
+          type="button"
+          className="tmcHeader__inquiry"
+          onClick={() => {
+            track({ name: "cta_click", cta: "header_private_inquiry" });
+            navigateToWaypoint({
+              waypoint: heroWaypoint,
+              lenisRef,
+              onComplete: () => setActiveWaypointId("hero"),
+            });
+            router.push("/", { scroll: false });
+            setHomePanelOpen(true);
+            // El panel de Home (HomeContentPanel) tarda un frame en montar
+            // tras abrirse — se espera antes de desplazar el scroll interno
+            // del panel hasta la sección Private Inquiry.
+            requestAnimationFrame(() => {
+              document
+                .getElementById("private-inquiry")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+          }}
+        >
+          PRIVATE INQUIRY
+        </button>
       </header>
 
       {active && <Overlay section={active} onClose={() => setOpenId(null)} />}
