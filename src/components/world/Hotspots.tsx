@@ -6,34 +6,57 @@
 // transición de cámara (vía scroll real) + cambio de URL (sección 5.2).
 
 import { Html } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { hotspots } from "@/lib/world/hotspots.config";
 import { waypoints } from "@/lib/world/waypoints";
 import { useWorld } from "@/lib/world/WorldContext";
 import { navigateToWaypoint } from "@/lib/world/navigateToWaypoint";
 import { useAspectCorrectionFactor } from "@/lib/world/useAspectCorrection";
+import { getCorrectedHotspotAnchor } from "@/lib/world/correctedHotspotAnchor";
 import { track } from "@/lib/analytics/track";
+import { RING_OUTER_RADIUS, LOGO_POSITION } from "./TmcLogo";
 import { OperatingUnitLogo } from "./OperatingUnitLogo";
 
-// NOTA (Fase 3, prompt maestro sección 6.2): se probó un cálculo dinámico de
-// diámetro de insignia = 74% del diámetro del aro (proporcional a LOGO_SIZE
-// corregido) y se revirtió — con las anclas actuales de hotspots.config.ts
-// (no modificables sin aprobación explícita), ese diámetro hace que las
-// insignias del mismo lado (Luxury/Cleaners, Transport/Project Office) se
-// superpongan entre sí, porque su separación vertical fue calibrada para el
-// tamaño fijo anterior (72px), no para 74% de un logo ya corregido. Aplicar
-// solo la proporción de diámetro sin también ajustar la distancia (también
-// especificada por el V3, ≈1.0x el diámetro) rompe el layout. Pendiente de
-// decisión — ver Gate Report de Fase 3.
+// Proporción exacta del prompt maestro sección 6.2: diámetro de insignia
+// ≈74% del diámetro del aro/logo central. Un primer intento (misma fórmula,
+// anchors angulares originales) producía overlap entre insignias del mismo
+// lado — resuelto redistribuyendo los anchors en hotspots.config.ts a 4
+// cuadrantes verdaderos de 90° a radio 1.0x el diámetro del logo (ver
+// comentario ahí); con esa geometría, la separación mínima entre insignias
+// adyacentes (~21.17 unidades de mundo) excede ampliamente el diámetro de
+// insignia (~11.08 unidades), sin necesitar ningún ajuste radial adicional.
+const BADGE_DIAMETER_RATIO = 0.74;
+/** Waypoint de referencia para el cálculo: "hero" es donde las 4 insignias
+ * se ven juntas alrededor del logo — mismo principio que REFERENCE_CAMERA_Z
+ * en SceneLayers.tsx. */
+const REFERENCE_CAMERA_DISTANCE = 60; // waypoints.ts hero: position.z=62, logo z=2
+const REFERENCE_FOV_DEG = 42; // waypoints.ts hero.fov
 
 export function Hotspots() {
   const router = useRouter();
   const { lenisRef, activeWaypointId, setActiveWaypointId } = useWorld();
+  const { size } = useThree();
   // Mismo factor que TmcLogo (useAspectCorrection.ts): en mobile portrait el
   // FOV horizontal se reduce mucho más que el vertical, y las anclas X fijas
   // caían fuera del frustum (los 4 marcadores no se veían) — se acercan al
   // centro proporcionalmente en aspects angostos.
   const aspectFactor = useAspectCorrectionFactor();
+
+  // Diámetro del aro proyectado a píxeles de pantalla en el waypoint hero,
+  // × 0.74 — el tamaño de insignia escala junto con LOGO_SIZE
+  // automáticamente si ese valor vuelve a ajustarse.
+  const badgeDiameterPx = useMemo(() => {
+    const vFovRad = (REFERENCE_FOV_DEG * Math.PI) / 180;
+    const visibleHeightAtDistance = 2 * REFERENCE_CAMERA_DISTANCE * Math.tan(vFovRad / 2);
+    const pixelsPerWorldUnit = size.height / visibleHeightAtDistance;
+    // El aro mismo se escala por aspectFactor (ver TmcLogo.tsx uniformScale) para
+    // compensar aspects angostos — el diámetro aparente debe reflejar eso, no solo
+    // el radio nominal, para que la proporción 74% se sostenga también en mobile.
+    const apparentRingDiameterWorld = RING_OUTER_RADIUS * 2 * aspectFactor;
+    return apparentRingDiameterWorld * pixelsPerWorldUnit * BADGE_DIAMETER_RATIO;
+  }, [size.height, aspectFactor]);
 
   return (
     <>
@@ -41,8 +64,12 @@ export function Hotspots() {
         const waypoint = waypoints.find((w) => w.id === hotspot.id);
         if (!waypoint) return null;
         const isActive = activeWaypointId === hotspot.id;
-        const [ax, ay, az] = hotspot.anchor;
-        const correctedAnchor: [number, number, number] = [ax * aspectFactor, ay, az];
+        const correctedAnchor = getCorrectedHotspotAnchor(
+          hotspot.anchor,
+          aspectFactor,
+          size.width,
+          LOGO_POSITION[1]
+        );
         return (
           <group key={hotspot.id} position={correctedAnchor}>
             <Html center occlude={false} zIndexRange={[10, 0]}>
@@ -68,6 +95,7 @@ export function Hotspots() {
                   label={hotspot.label}
                   tagline={hotspot.message}
                   active={isActive}
+                  diameterPx={badgeDiameterPx}
                 />
               </button>
             </Html>

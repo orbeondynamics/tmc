@@ -64,7 +64,11 @@ const BASE_UNIFORM_SCALE = LOGO_SIZE / SOURCE_WIDTH_UNITS;
 // 545) al LOGO_SIZE real de esta escena — misma proporción, no una fracción
 // extra de LOGO_SIZE/2.
 const RING_SCALE = LOGO_SIZE / RING_REFERENCE_LOGO_SIZE;
-const RING_OUTER_RADIUS = RING_OUTER * RING_SCALE;
+/** Radio exterior real del aro en unidades de mundo — exportado para que
+ * Hotspots.tsx calcule el diámetro de las insignias como 74% del diámetro
+ * del aro (prompt maestro sección 6.2) y hotspots.config.ts derive el radio
+ * de 1.0x para los anchors, sin duplicar la fórmula en tres lugares. */
+export const RING_OUTER_RADIUS = RING_OUTER * RING_SCALE;
 const RING_INNER_RADIUS = RING_INNER * RING_SCALE;
 const RING_CENTERLINE = (RING_OUTER_RADIUS + RING_INNER_RADIUS) / 2;
 const RING_TUBE_RADIUS = (RING_OUTER_RADIUS - RING_INNER_RADIUS) / 2;

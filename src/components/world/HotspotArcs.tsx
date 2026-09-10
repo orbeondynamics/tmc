@@ -23,6 +23,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { hotspots } from "@/lib/world/hotspots.config";
 import { useAspectCorrectionFactor } from "@/lib/world/useAspectCorrection";
+import { getCorrectedHotspotAnchor } from "@/lib/world/correctedHotspotAnchor";
 import { LOGO_POSITION } from "./TmcLogo";
 
 /** Cuánto se curva cada arco, como fracción de la distancia centro↔hotspot. */
@@ -45,8 +46,13 @@ export function HotspotArcs() {
     const [cx, cy] = projectToScreen(centerWorld.current);
 
     hotspots.forEach((hotspot, i) => {
-      const [ax, ay, az] = hotspot.anchor;
-      hotspotWorld.current.set(ax * aspectFactor, ay, az);
+      const [correctedX, correctedY, correctedZ] = getCorrectedHotspotAnchor(
+        hotspot.anchor,
+        aspectFactor,
+        size.width,
+        LOGO_POSITION[1]
+      );
+      hotspotWorld.current.set(correctedX, correctedY, correctedZ);
       const [hx, hy] = projectToScreen(hotspotWorld.current);
 
       const midX = (cx + hx) / 2;
@@ -59,7 +65,7 @@ export function HotspotArcs() {
       // arcos se abran hacia afuera del centro en vez de cruzarse entre sí.
       const nx = -dy / dist;
       const ny = dx / dist;
-      const bow = dist * ARC_BOW * (ax < 0 ? -1 : 1);
+      const bow = dist * ARC_BOW * (hotspot.anchor[0] < 0 ? -1 : 1);
       const ctrlX = midX + nx * bow;
       const ctrlY = midY + ny * bow;
 

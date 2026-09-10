@@ -27,15 +27,27 @@ interface OperatingUnitLogoProps {
   label: string;
   tagline: string;
   active?: boolean;
+  /** Diámetro en píxeles CSS, calculado en Hotspots.tsx como 74% del diámetro
+   * proyectado del aro/logo central (prompt maestro sección 6.2, "proporciones
+   * exactas"). Opcional para no romper otros usos futuros sin este cálculo. */
+  diameterPx?: number;
 }
 
-export function OperatingUnitLogo({ unitId, label, tagline, active = false }: OperatingUnitLogoProps) {
+export function OperatingUnitLogo({
+  unitId,
+  label,
+  tagline,
+  active = false,
+  diameterPx,
+}: OperatingUnitLogoProps) {
   const src = tmcAssets.operatingUnitLogos[unitId as OperatingUnitId];
   if (!src) return null;
 
+  const frameStyle = diameterPx ? { width: diameterPx, height: diameterPx } : undefined;
+
   return (
     <span className={`unitLogo${active ? " unitLogo--active" : ""}`}>
-      <span className="unitLogo__frame">
+      <span className="unitLogo__frame" style={frameStyle}>
         <Image
           src={src}
           alt={label}
