@@ -534,11 +534,30 @@ body:has(.worldRoot) .tmcFallback {
   margin-top: 12px;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 1024px) {
+  /* Fase 5: en mobile el footer pasa a 2 filas de labels cortos (grid
+     1fr 1fr, hint oculto en la regla de abajo, breakpoint propio en
+     720px) — su altura queda acotada, sin texto largo que la infle.
+     `bottom` se eleva lo suficiente para despejarla con margen, en vez
+     del valor anterior (90px) que no la tenía en cuenta y producía
+     overlap real entre el contenido del panel y el footer. Medido: el
+     footer nunca supera ~146px entre 721-1024px (4 columnas, hint
+     visible) ni ~149px por debajo de 720px (2 columnas, hint oculto) —
+     165px despeja ambos casos con margen real, no un valor arbitrario.
+
+     El breakpoint de este bloque se amplió de 720px a 1024px (Fase 5):
+     medido en navegador que el panel lateral de escritorio (400px,
+     `right:0`) empieza a solaparse con los hotspots de la derecha
+     (Transport/Project Office) por debajo de ~955px de ancho de
+     viewport — 1024px es el punto verificado más cercano con margen
+     real (~55px) donde el layout de escritorio ya no solapa nada, sin
+     ampliar el breakpoint más de lo necesario. Reutiliza el mismo
+     patrón "franja inferior" ya validado en mobile, sin nuevo
+     tratamiento visual. */
   .unitPanel,
   .homePanel {
     top: auto;
-    bottom: 90px;
+    bottom: 165px;
     right: 12px;
     left: 12px;
     width: auto;
@@ -558,6 +577,21 @@ body:has(.worldRoot) .tmcFallback {
     margin-left: 0;
     border-left: none;
     padding: 20px;
+  }
+}
+
+/* Fase 5: en el rango 721-1024px los hotspots ya NO usan la compresión Y de
+   mobile (getCorrectedHotspotAnchor solo comprime por debajo de 720px,
+   Fase 3, sin tocar aquí) — el aro llega a ~666px de profundidad en un
+   viewport de 1024px de alto. El `max-height: 40vh` de la franja inferior
+   (bloque de arriba, ya validado en mobile) es demasiado alto para este
+   rango y vuelve a tapar los hotspots inferiores. Único ajuste: reducir
+   max-height para este rango específico, sin tocar ningún otro valor del
+   mismo patrón ya establecido. */
+@media (min-width: 721px) and (max-width: 1024px) {
+  .unitPanel,
+  .homePanel {
+    max-height: 16vh;
   }
 }
 
