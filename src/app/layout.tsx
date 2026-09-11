@@ -18,9 +18,23 @@ const uiFont = Manrope({
   subsets: ["latin"],
 });
 
+// Mismo placeholder de dominio ya usado en sitemap.ts/robots.ts — no hay
+// dominio de producción aprobado en el proyecto; se lee de
+// NEXT_PUBLIC_SITE_URL para no fabricar uno.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tmc-world.example.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "TMC World",
   description: seoDescriptions.tmc,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "TMC World",
+    description: seoDescriptions.tmc,
+    url: "/",
+    siteName: "TMC World",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
