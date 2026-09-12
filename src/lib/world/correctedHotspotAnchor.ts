@@ -1,7 +1,7 @@
-// Corrección compartida entre Hotspots.tsx y HotspotArcs.tsx — ambos
-// proyectan los mismos anchors de hotspots.config.ts y deben quedar
-// perfectamente sincronizados (los arcos apuntan a donde están los badges).
-// Extraído a un helper único para no duplicar la fórmula en dos archivos.
+// Usado por Hotspots.tsx para proyectar los anchors de hotspots.config.ts a
+// una posición segura en pantalla (antes también por HotspotArcs.tsx, ahora
+// eliminado — los arcos decorativos se quitaron del todo por diagnóstico
+// REDTEAM, se veían torcidos y mal ubicados sin solución viable de posición).
 //
 // Corrección de causa raíz (diagnóstico REDTEAM "insignias tapan el
 // header/footer"): el anchor vive en una posición FIJA del mundo 3D

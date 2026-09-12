@@ -46,6 +46,15 @@ interface WorldContextValue {
   initialWaypointId: string;
   activeWaypointId: string;
   setActiveWaypointId: (id: string) => void;
+  /** Ruta que un click interno (hotspot, logo Home, PRIVATE INQUIRY) acaba de
+   * empujar con router.push — ScrollDriver la compara contra usePathname()
+   * para distinguir "este cambio de ruta ya lo maneja el click" (scroll
+   * animado + setActiveWaypointId en su propio onComplete) de un cambio de
+   * ruta EXTERNO (atrás/adelante del navegador, editar la URL a mano): ese
+   * caso no pasa por ningún handler propio y por eso quedaba desincronizado
+   * (bug real: back button dejaba el panel de una unidad mostrado con la URL
+   * ya en "/"). Ver ScrollDriver en WorldExperience.tsx. */
+  pendingRouteRef: React.MutableRefObject<string | null>;
   introComplete: boolean;
   setIntroComplete: (v: boolean) => void;
   /** Panel de narrativa Home (HomeContentPanel) — colapsado por defecto; el
@@ -65,6 +74,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const [activeWaypointId, setActiveWaypointId] = useState(initialWaypointId);
   const [introComplete, setIntroComplete] = useState(computeInitialIntroComplete);
   const [homePanelOpen, setHomePanelOpen] = useState(false);
+  const pendingRouteRef = useRef<string | null>(null);
 
   return (
     <WorldContext.Provider
@@ -74,6 +84,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
         initialWaypointId,
         activeWaypointId,
         setActiveWaypointId,
+        pendingRouteRef,
         introComplete,
         setIntroComplete,
         homePanelOpen,

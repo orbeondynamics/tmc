@@ -27,6 +27,11 @@ export const tmcAssets = {
     person: `${BASE}/person.webp`,
   },
   masterBackground: `${BASE}/master-background.webp`,
+  /** Imagen para tarjetas sociales (Open Graph), 1200x630 — aprobada por el
+   * usuario. El logo dentro de esta imagen es exclusivo de la tarjeta social,
+   * no sustituye ni modifica el logo 3D oficial de la escena (TmcLogo.tsx,
+   * spec CERRADO aparte). */
+  ogImage: `${BASE}/og-image.png`,
   logo3d: `${BASE}/tmc-logo-3d.glb`,
   logo3dOriginal: `${BASE}/tmc-logo-3d-original.glb`,
   /**

@@ -1,9 +1,9 @@
-// Fórmula compartida entre Hotspots.tsx y HotspotArcs.tsx para el diámetro
-// real en píxeles de una insignia en el frame actual — extraída aquí por la
-// misma razón que correctedHotspotAnchor.ts (evitar duplicar la fórmula en
-// dos archivos): correctedHotspotAnchor.ts necesita este radio para saber
-// cuánto hace falta comprimir un anchor para que la insignia completa (no
-// solo su punto central) quede fuera de la franja del header/footer.
+// Fórmula usada por Hotspots.tsx para el diámetro real en píxeles de una
+// insignia en el frame actual (antes también por HotspotArcs.tsx, ahora
+// eliminado — ver correctedHotspotAnchor.ts): correctedHotspotAnchor.ts
+// necesita este radio para saber cuánto hace falta comprimir un anchor para
+// que la insignia completa (no solo su punto central) quede fuera de la
+// franja del header/footer.
 //
 // Misma fórmula/constantes que ya usaba Hotspots.tsx (prompt maestro sección
 // 6.2: diámetro ≈74% del diámetro del aro) + compensación por distancia real

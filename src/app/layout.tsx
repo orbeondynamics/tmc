@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { WorldExperience } from "@/components/world/WorldExperience";
 import { seoDescriptions } from "@/config/tmcContent";
+import { tmcAssets } from "@/config/tmcAssets";
 import { getSiteContent } from "@/lib/content/tmcContentSource";
 import "./globals.css";
 
@@ -34,6 +35,7 @@ export const metadata: Metadata = {
     url: "/",
     siteName: "TMC World",
     type: "website",
+    images: [{ url: tmcAssets.ogImage, width: 1200, height: 630 }],
   },
 };
 

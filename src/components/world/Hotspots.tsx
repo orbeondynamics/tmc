@@ -8,10 +8,11 @@
 import { Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import * as THREE from "three";
 import { hotspots } from "@/lib/world/hotspots.config";
 import { waypoints } from "@/lib/world/waypoints";
+import { pathToWaypointId } from "@/lib/world/pathToWaypointId";
 import { useWorld } from "@/lib/world/WorldContext";
 import { navigateToWaypoint } from "@/lib/world/navigateToWaypoint";
 import { useAspectCorrectionFactor } from "@/lib/world/useAspectCorrection";
@@ -24,8 +25,16 @@ import { OperatingUnitLogo } from "./OperatingUnitLogo";
 
 export function Hotspots() {
   const router = useRouter();
-  const { lenisRef, activeWaypointId, setActiveWaypointId } = useWorld();
+  const pathname = usePathname();
+  const { lenisRef, activeWaypointId, setActiveWaypointId, pendingRouteRef } = useWorld();
   const { size, camera } = useThree();
+  // Simplificación de páginas de unidad (diagnóstico REDTEAM): en una página
+  // de unidad solo se muestra la insignia de esa unidad, no el resto del hub
+  // (ver WorldCanvas.tsx para el aro central, que se desmonta del todo). En
+  // home (routeUnitId === "hero") se ven las 4, comportamiento sin cambios.
+  const routeUnitId = pathToWaypointId(pathname);
+  const visibleHotspots =
+    routeUnitId === "hero" ? hotspots : hotspots.filter((h) => h.id === routeUnitId);
   // Mismo factor que TmcLogo (useAspectCorrection.ts): en mobile portrait el
   // FOV horizontal se reduce mucho más que el vertical, y las anclas X fijas
   // caían fuera del frustum (los 4 marcadores no se veían) — se acercan al
@@ -52,9 +61,8 @@ export function Hotspots() {
     // insignia se calculaba contra una distancia de cámara fija (la de
     // hero). Se recalcula aquí cada frame contra la distancia real
     // cámara→logo, aplicada directamente sobre el DOM vía ref (sin pasar por
-    // estado de React — mismo principio que HotspotArcs.tsx aplica a las
-    // posiciones de los arcos, necesario porque la distancia cambia
-    // continuamente durante el scroll, no solo entre waypoints).
+    // estado de React, necesario porque la distancia cambia continuamente
+    // durante el scroll, no solo entre waypoints).
     const diameterPx = getBadgeDiameterPx(initialBadgeDiameterPx, camera, logoWorldPos.current);
     for (const el of Object.values(frameRefs.current)) {
       if (el) {
@@ -98,7 +106,7 @@ export function Hotspots() {
 
   return (
     <>
-      {hotspots.map((hotspot) => {
+      {visibleHotspots.map((hotspot) => {
         const waypoint = waypoints.find((w) => w.id === hotspot.id);
         if (!waypoint) return null;
         const isActive = activeWaypointId === hotspot.id;
@@ -132,6 +140,11 @@ export function Hotspots() {
                     lenisRef,
                     onComplete: () => setActiveWaypointId(hotspot.id),
                   });
+                  // pendingRouteRef marca esta navegación como interna antes del
+                  // push — ScrollDriver (WorldExperience.tsx) la compara contra
+                  // usePathname() para no re-disparar un salto de scroll cuando
+                  // el cambio de ruta ya lo maneja esta misma animación de arriba.
+                  pendingRouteRef.current = hotspot.route;
                   // scroll:false — Next.js no debe resetear el scroll al navegar; el
                   // scroll real (Lenis) es quien conduce la pose de cámara y ya se
                   // está animando hacia el waypoint en la línea de arriba.

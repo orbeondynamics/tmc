@@ -7,13 +7,14 @@
 // semántico (sección 10). Se monta una sola vez en el layout raíz para que
 // el Canvas nunca se reinicie al navegar entre rutas (sección 5.1, CERRADO).
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Lenis from "lenis";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { WorldProvider, useWorld } from "@/lib/world/WorldContext";
 import { waypoints } from "@/lib/world/waypoints";
+import { pathToWaypointId } from "@/lib/world/pathToWaypointId";
 import { isWebGLAvailable } from "@/lib/world/webgl-detect";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useClientOnlyValue } from "@/hooks/useClientOnlyValue";
@@ -31,9 +32,24 @@ gsap.registerPlugin(useGSAP);
 const SCROLL_SPACER_VH = 500;
 
 function ScrollDriver() {
-  const { progressRef, lenisRef, introComplete, initialWaypointId } = useWorld();
+  const { progressRef, lenisRef, introComplete, initialWaypointId, setActiveWaypointId, pendingRouteRef } =
+    useWorld();
+  const pathname = usePathname();
 
   useEffect(() => {
+    // Corrección de causa raíz (defecto REDTEAM, back button dejaba el
+    // scroll real desincronizado incluso con el salto de abajo): confirmado
+    // con instrumentación que lenis.scrollTo(0,{immediate:true}) SÍ llevaba
+    // window.scrollY a 0 al ejecutarse, pero volvía a 900 poco después — el
+    // restauro automático de scroll del navegador en popstate (asociado al
+    // historial de esta SPA vía history.pushState) se dispara de forma
+    // asíncrona y pisa el salto de Lenis. Desactivarlo es la técnica
+    // estándar para apps con scroll animado/virtualizado propio (Lenis ya
+    // es la única fuente de verdad del scroll, sección 6).
+    if (typeof window !== "undefined" && "scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
     const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
     lenisRef.current = lenis;
 
@@ -71,6 +87,40 @@ function ScrollDriver() {
     if (introComplete) lenis.start();
     else lenis.stop();
   }, [introComplete, lenisRef]);
+
+  // Corrección de causa raíz (defecto REDTEAM "la URL no cambia / el panel no
+  // corresponde a la unidad correcta"): activeWaypointId solo se actualizaba
+  // desde el onComplete del click en un hotspot/logo Home/PRIVATE INQUIRY —
+  // un cambio de ruta que NO pasa por esos handlers (botón atrás/adelante del
+  // navegador, editar la URL a mano) cambiaba el pathname real pero dejaba
+  // activeWaypointId y el scroll real apuntando a la unidad anterior
+  // (confirmado: back button dejaba la URL en "/" con el panel de Cleaners
+  // todavía montado y la cámara todavía en su waypoint). pendingRouteRef
+  // (ver WorldContext.tsx) distingue un cambio de ruta interno — ya
+  // manejado por su propio click, con su propia animación — de uno externo,
+  // que se sincroniza aquí de inmediato (sin animar, igual que el salto de
+  // deep-link inicial arriba).
+  const isFirstPathnameRun = useRef(true);
+  useEffect(() => {
+    if (isFirstPathnameRun.current) {
+      isFirstPathnameRun.current = false;
+      return;
+    }
+    if (pendingRouteRef.current === pathname) {
+      pendingRouteRef.current = null;
+      return;
+    }
+    pendingRouteRef.current = null;
+    const waypointId = pathToWaypointId(pathname);
+    setActiveWaypointId(waypointId);
+    const lenis = lenisRef.current;
+    const waypoint = waypoints.find((w) => w.id === waypointId);
+    if (lenis && waypoint) {
+      // force:true — Lenis se saltaría este scrollTo si isStopped es true en
+      // ese instante (p.ej. justo tras el gesto de "atrás" del navegador).
+      lenis.scrollTo(waypoint.scrollProgress * lenis.limit, { immediate: true, force: true });
+    }
+  }, [pathname, pendingRouteRef, setActiveWaypointId, lenisRef]);
 
   return <div style={{ height: `${SCROLL_SPACER_VH}vh` }} aria-hidden="true" />;
 }

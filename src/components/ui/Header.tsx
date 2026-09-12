@@ -20,7 +20,7 @@ export function Header({ overlays: headerOverlays }: { overlays: OverlaySection[
   const [openId, setOpenId] = useState<string | null>(null);
   const active = headerOverlays.find((item) => item.id === openId) ?? null;
   const router = useRouter();
-  const { lenisRef, setActiveWaypointId, setHomePanelOpen } = useWorld();
+  const { lenisRef, setActiveWaypointId, setHomePanelOpen, pendingRouteRef } = useWorld();
   const heroWaypoint = waypoints.find((w) => w.id === "hero")!;
 
   return (
@@ -36,6 +36,9 @@ export function Header({ overlays: headerOverlays }: { overlays: OverlaySection[
               lenisRef,
               onComplete: () => setActiveWaypointId("hero"),
             });
+            // Ver comentario en Hotspots.tsx: marca esta navegación como
+            // interna antes del push.
+            pendingRouteRef.current = "/";
             router.push("/", { scroll: false });
           }}
         >
@@ -64,6 +67,7 @@ export function Header({ overlays: headerOverlays }: { overlays: OverlaySection[
               lenisRef,
               onComplete: () => setActiveWaypointId("hero"),
             });
+            pendingRouteRef.current = "/";
             router.push("/", { scroll: false });
             setHomePanelOpen(true);
             // El panel de Home (HomeContentPanel) tarda un frame en montar
