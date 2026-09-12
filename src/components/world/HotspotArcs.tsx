@@ -17,13 +17,15 @@
 // un render de React 60 veces por segundo (mismo principio que
 // WorldContext.tsx aplica al progreso de scroll).
 
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { hotspots } from "@/lib/world/hotspots.config";
 import { useAspectCorrectionFactor } from "@/lib/world/useAspectCorrection";
 import { getCorrectedHotspotAnchor } from "@/lib/world/correctedHotspotAnchor";
+import { useHeaderFooterElements } from "@/lib/world/useHeaderFooterBounds";
+import { getInitialBadgeDiameterPx, getBadgeDiameterPx } from "@/lib/world/badgeDiameter";
 import { LOGO_POSITION } from "./TmcLogo";
 
 /** Cuánto se curva cada arco, como fracción de la distancia centro↔hotspot. */
@@ -35,6 +37,14 @@ export function HotspotArcs() {
   const pathRefs = useRef<(SVGPathElement | null)[]>([]);
   const centerWorld = useRef(new THREE.Vector3());
   const hotspotWorld = useRef(new THREE.Vector3());
+  const anchorScratch = useRef(new THREE.Vector3());
+  const logoWorldPos = useRef(new THREE.Vector3(...LOGO_POSITION));
+  const { headerRef, footerRef } = useHeaderFooterElements();
+
+  const initialBadgeDiameterPx = useMemo(
+    () => getInitialBadgeDiameterPx(size.height, aspectFactor),
+    [size.height, aspectFactor]
+  );
 
   function projectToScreen(v: THREE.Vector3): [number, number] {
     v.project(camera);
@@ -45,14 +55,27 @@ export function HotspotArcs() {
     centerWorld.current.set(...LOGO_POSITION);
     const [cx, cy] = projectToScreen(centerWorld.current);
 
+    const headerBottomPx = headerRef.current?.getBoundingClientRect().bottom ?? 0;
+    const footerTopPx = footerRef.current?.getBoundingClientRect().top ?? size.height;
+    // Mismo radio que Hotspots.tsx usa para el tamaño real de la insignia en
+    // este frame — necesario para que el arco apunte a donde el borde de la
+    // insignia queda a salvo del header/footer, no solo su punto central
+    // (ver correctedHotspotAnchor.ts).
+    const markerRadiusPx = getBadgeDiameterPx(initialBadgeDiameterPx, camera, logoWorldPos.current) / 2;
+
     hotspots.forEach((hotspot, i) => {
-      const [correctedX, correctedY, correctedZ] = getCorrectedHotspotAnchor(
-        hotspot.anchor,
+      const { position: correctedAnchor, opacity } = getCorrectedHotspotAnchor({
+        anchor: hotspot.anchor,
         aspectFactor,
-        size.width,
-        LOGO_POSITION[1]
-      );
-      hotspotWorld.current.set(correctedX, correctedY, correctedZ);
+        logoY: LOGO_POSITION[1],
+        camera,
+        viewportHeight: size.height,
+        headerBottomPx,
+        footerTopPx,
+        markerRadiusPx,
+        scratch: anchorScratch.current,
+      });
+      hotspotWorld.current.set(...correctedAnchor);
       const [hx, hy] = projectToScreen(hotspotWorld.current);
 
       const midX = (cx + hx) / 2;
@@ -70,7 +93,13 @@ export function HotspotArcs() {
       const ctrlY = midY + ny * bow;
 
       const path = pathRefs.current[i];
-      if (path) path.setAttribute("d", `M ${cx} ${cy} Q ${ctrlX} ${ctrlY} ${hx} ${hy}`);
+      if (path) {
+        path.setAttribute("d", `M ${cx} ${cy} Q ${ctrlX} ${ctrlY} ${hx} ${hy}`);
+        // Mismo residual que la insignia (ver correctedHotspotAnchor.ts) —
+        // el arco se atenúa junto con la insignia a la que apunta, en vez de
+        // quedar a opacidad completa señalando a una insignia atenuada.
+        path.style.opacity = String(opacity);
+      }
     });
   });
 

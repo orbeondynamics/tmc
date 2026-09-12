@@ -31,7 +31,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { tmcAssets } from "@/config/tmcAssets";
 import { useAspectCorrectionFactor } from "@/lib/world/useAspectCorrection";
@@ -102,11 +102,22 @@ function useGoldMaterial() {
  * centro) para que el arco apunte exactamente al mismo punto que el logo. */
 export const LOGO_POSITION: [number, number, number] = [0, 7, 2];
 
+/** Distancia cámara→logo en el waypoint hero (position=[0,6,62], LOGO_POSITION=[0,7,2]) —
+ * el sistema para el que LOGO_SIZE/RING_OUTER/RING_INNER están calibrados
+ * visualmente (spec CERRADO). Mismo valor de referencia que
+ * REFERENCE_CAMERA_DISTANCE en Hotspots.tsx — ambos derivan de la misma
+ * cámara hero, no deben divergir. */
+const REFERENCE_LOGO_DISTANCE = 60;
+const MIN_DISTANCE_COMPENSATION = 0.4;
+const MAX_DISTANCE_COMPENSATION = 1.6;
+
 export function TmcLogo({ position = LOGO_POSITION }: { position?: [number, number, number] }) {
   const { scene } = useGLTF(tmcAssets.logo3d);
   const groupRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
   const aspectFactor = useAspectCorrectionFactor();
   const goldMaterial = useGoldMaterial();
+  const logoWorldPos = useRef(new THREE.Vector3(...position));
 
   const [uniformScale, thicknessScale] = useMemo(() => {
     const scale = BASE_UNIFORM_SCALE * aspectFactor;
@@ -124,10 +135,29 @@ export function TmcLogo({ position = LOGO_POSITION }: { position?: [number, numb
   }, [scene, goldMaterial]);
 
   useFrame((_, delta) => {
-    if (groupRef.current) {
-      // LOGO_ROTATION fija el eje ('y'); la velocidad viene de LOGO_ROTATION_SPEED.
-      groupRef.current.rotation[LOGO_ROTATION] += LOGO_ROTATION_SPEED * delta;
-    }
+    if (!groupRef.current) return;
+    // LOGO_ROTATION fija el eje ('y'); la velocidad viene de LOGO_ROTATION_SPEED.
+    groupRef.current.rotation[LOGO_ROTATION] += LOGO_ROTATION_SPEED * delta;
+
+    // Corrección de causa raíz (diagnóstico "logo gigante en páginas de
+    // unidad"): LOGO_SIZE es un tamaño de mundo fijo, calibrado para la
+    // distancia cámara→logo del waypoint hero (~60). En los waypoints de
+    // unidad la cámara está mucho más cerca (ej. Luxury ~34.6), y sin
+    // compensación el logo se proyecta proporcionalmente más grande — "se ve
+    // gigante, cortado por el borde". Se aplica un factor de escala adicional
+    // sobre el group completo (wordmark + aro juntos, preservando su
+    // proporción interna) inversamente proporcional a qué tan cerca está la
+    // cámara respecto a la distancia de referencia — el tamaño aparente en
+    // pantalla se mantiene cercano al de hero en cualquier waypoint. Se
+    // recalcula cada frame (no useMemo) porque la distancia cambia
+    // continuamente durante el scroll, igual que SceneLayers.tsx.
+    const distance = camera.position.distanceTo(logoWorldPos.current);
+    const distanceCompensation = THREE.MathUtils.clamp(
+      distance / REFERENCE_LOGO_DISTANCE,
+      MIN_DISTANCE_COMPENSATION,
+      MAX_DISTANCE_COMPENSATION
+    );
+    groupRef.current.scale.setScalar(distanceCompensation);
   });
 
   return (
