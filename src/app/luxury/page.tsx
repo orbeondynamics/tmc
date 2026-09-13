@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { TmcWorldPage } from "@/components/TmcWorldPage";
+import { StaticUnitPage } from "@/components/units/StaticUnitPage";
 import { tmcAssets } from "@/config/tmcAssets";
 
 const title = "TMC Luxury — Private Property Management";
@@ -20,5 +20,5 @@ export const metadata: Metadata = {
 };
 
 export default function LuxuryPage() {
-  return <TmcWorldPage unitId="tmc-luxury" />;
+  return <StaticUnitPage unitId="tmc-luxury" />;
 }

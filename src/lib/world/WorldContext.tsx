@@ -15,7 +15,7 @@
 // `introComplete` se resuelve una sola vez, en el inicializador perezoso de
 // useState (se ejecuta durante el render, nunca en un efecto).
 
-import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import type Lenis from "lenis";
 import { waypoints } from "./waypoints";
@@ -65,6 +65,27 @@ interface WorldContextValue {
 
 const WorldContext = createContext<WorldContextValue | null>(null);
 
+// Fuera de WorldProvider (páginas de unidad, estáticas — cambio de alcance:
+// ya no montan el mundo 3D) — degrada a no-ops seguros en vez de lanzar, para
+// que Header.tsx funcione sin cambios dentro y fuera del mundo 3D. El logo
+// Home / PRIVATE INQUIRY siguen navegando bien (router.push no depende de
+// esto); lo único que se pierde ahí afuera es la animación de cámara, que no
+// tiene sentido sin mundo 3D montado.
+const NOOP_REF: React.MutableRefObject<null> = { current: null };
+function noop() {}
+const DEGRADED_CONTEXT: WorldContextValue = {
+  progressRef: { current: { t: 0 } },
+  lenisRef: NOOP_REF,
+  initialWaypointId: "hero",
+  activeWaypointId: "hero",
+  setActiveWaypointId: noop,
+  pendingRouteRef: NOOP_REF,
+  introComplete: true,
+  setIntroComplete: noop,
+  homePanelOpen: false,
+  setHomePanelOpen: noop,
+};
+
 export function WorldProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [initialWaypointId] = useState(() => pathToWaypointId(pathname));
@@ -73,8 +94,31 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const lenisRef = useRef<Lenis | null>(null);
   const [activeWaypointId, setActiveWaypointId] = useState(initialWaypointId);
   const [introComplete, setIntroComplete] = useState(computeInitialIntroComplete);
-  const [homePanelOpen, setHomePanelOpen] = useState(false);
+  // Cambio de alcance (páginas de unidad ya no montan el mundo 3D): PRIVATE
+  // INQUIRY desde una de esas páginas no puede abrir el panel in-place (no
+  // hay panel ahí) — navega a home con ?inquiry=1 (ver Header.tsx). El valor
+  // inicial de homePanelOpen se calcula acá (inicializador perezoso, no un
+  // setState dentro de un efecto — regla react-hooks/set-state-in-effect);
+  // el efecto de abajo solo se encarga de los efectos secundarios reales
+  // (limpiar la URL, hacer scroll), no de setear este estado.
+  const [homePanelOpen, setHomePanelOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("inquiry") === "1";
+  });
   const pendingRouteRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!homePanelOpen) return;
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("inquiry") !== "1") return;
+    // Limpia el parámetro sin agregar una entrada nueva al historial — mismo
+    // timing que el click in-place ya usaba para el scroll.
+    window.history.replaceState(null, "", window.location.pathname);
+    requestAnimationFrame(() => {
+      document.getElementById("private-inquiry")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <WorldContext.Provider
@@ -98,8 +142,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
 
 export function useWorld() {
   const ctx = useContext(WorldContext);
-  if (!ctx) throw new Error("useWorld must be used within WorldProvider");
-  return ctx;
+  return ctx ?? DEGRADED_CONTEXT;
 }
 
 export function markIntroSeen() {

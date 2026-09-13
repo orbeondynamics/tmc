@@ -1,11 +1,16 @@
 "use client";
 
 // Bloque 1 (MVP) — orquestador cliente principal (Master Handoff sección
-// 9.3, CERRADO). Mantiene: Canvas único y persistente, Lenis + GSAP como
-// único reloj de scroll (sección 6.1), intro cinematográfica con scroll
-// bloqueado (sección 7), detección WebGL/reduced-motion con fallback
-// semántico (sección 10). Se monta una sola vez en el layout raíz para que
-// el Canvas nunca se reinicie al navegar entre rutas (sección 5.1, CERRADO).
+// 9.3, CERRADO). Mantiene: Canvas 3D, Lenis + GSAP como único reloj de
+// scroll (sección 6.1), intro cinematográfica con scroll bloqueado (sección
+// 7), detección WebGL/reduced-motion con fallback semántico (sección 10).
+//
+// Cambio de alcance: las 4 páginas de unidad dejan de ser parte del mundo
+// 3D (ahora son páginas estáticas, ver StaticUnitPage.tsx) — este componente
+// ya NO es persistente entre todas las rutas, solo existe en home
+// (HomeWorldGate.tsx lo monta/desmonta según la ruta). El Canvas se
+// remonta fresco cada vez que se vuelve a "/", lo cual es correcto: no hay
+// estado de cámara/scroll que deba sobrevivir una visita a una unidad.
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
@@ -24,7 +29,6 @@ import { WorldCanvas } from "./WorldCanvas";
 import { IntroSequence } from "./IntroSequence";
 import { Header } from "@/components/ui/Header";
 import { Footer } from "@/components/ui/Footer";
-import { UnitContentPanel } from "@/components/ui/UnitContentPanel";
 import { HomeContentPanel } from "@/components/ui/HomeContentPanel";
 
 gsap.registerPlugin(useGSAP);
@@ -147,7 +151,12 @@ function ExperienceInner({ siteContent }: { siteContent: SiteContent }) {
           miami={siteContent.miamiContent}
           privateInquiry={siteContent.privateInquiryContent}
         />
-        <UnitContentPanel units={siteContent.operatingUnits} />
+        {/* UnitContentPanel se retiró de aquí (cambio de alcance): con el
+            click de un hotspot ahora navegando recién en el onComplete del
+            vuelo (ver Hotspots.tsx), activeWaypointId nunca llega a valer el
+            id de una unidad mientras seguimos en home — el cambio de ruta a
+            la página estática de esa unidad ocurre en el mismo instante. Ese
+            panel ya no tenía ningún momento real en el que mostrarse. */}
         <Footer
           aboutUs={siteContent.aboutUsContent}
           contact={siteContent.contactContent}

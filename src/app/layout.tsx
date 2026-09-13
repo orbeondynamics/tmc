@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
-import { WorldExperience } from "@/components/world/WorldExperience";
+import { HomeWorldGate } from "@/components/world/HomeWorldGate";
 import { seoDescriptions } from "@/config/tmcContent";
 import { tmcAssets } from "@/config/tmcAssets";
 import { getSiteContent } from "@/lib/content/tmcContentSource";
@@ -69,9 +69,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${displayFont.variable} ${uiFont.variable}`}>
       <body>
         {children}
-        {/* Único Canvas R3F persistente (sección 5.1, CERRADO): vive en el layout raíz
-            para no reiniciarse al navegar entre "/", "/luxury", "/transport", etc. */}
-        <WorldExperience siteContent={siteContent} />
+        {/* Cambio de alcance: el mundo 3D ya solo existe en home ("/") — las
+            4 páginas de unidad son páginas estáticas normales (StaticUnitPage.tsx).
+            HomeWorldGate monta/desmonta WorldExperience según la ruta, vía
+            next/dynamic con ssr:false, para que Three.js/R3F/GSAP/Lenis ni
+            se descarguen en las rutas de unidad. */}
+        <HomeWorldGate siteContent={siteContent} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

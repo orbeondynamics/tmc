@@ -827,6 +827,78 @@ body:has(.worldRoot) .tmcFallback {
   }
 }
 
+/* ---------- Página estática de unidad (cambio de alcance mayor: /luxury,
+   /transport, /cleaners, /project-office dejan de ser parte del mundo 3D —
+   StaticUnitPage.tsx). Header/footer fijos igual que en home (mismo criterio
+   visual). El panel reusa el mismo patrón ya aprobado de .unitPanel (fijo al
+   viewport, con su propio scroll interno) en vez de scroll nativo de página
+   — bug real encontrado en validación: con scroll nativo + padding-bottom,
+   el contenido largo (listas de capabilities + extra) igual pasaba POR
+   DEBAJO del footer fijo a mitad de scroll, con texto de ambos superpuesto
+   (el padding solo deja espacio al FINAL del documento, no protege ningún
+   punto intermedio de un footer position:fixed). El panel puede tener fondo
+   sólido sin restricción: no compite con nada 3D encima. ---------- */
+.staticUnitPage {
+  position: fixed;
+  inset: 0;
+}
+.staticUnitPage__background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+}
+.staticUnitPage__chrome {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+.staticUnitPanel {
+  position: fixed;
+  top: 96px;
+  right: 0;
+  /* 96px (el mismo valor que .unitPanel) no alcanzaba aquí: medido en
+     navegador real, el footer mide ~154px de alto a 1440px de ancho —
+     96px dejaba el borde inferior del panel 58px DENTRO del footer.
+     175px deja margen real, verificado en 1366/1440/1920. */
+  bottom: 175px;
+  z-index: 15;
+  width: min(480px, 92vw);
+  overflow: hidden;
+}
+.staticUnitPanel__scroll {
+  height: 100%;
+  overflow-y: auto;
+  background: rgba(6, 11, 24, 0.94);
+  border-left: 1px solid var(--hairline);
+  padding: 40px clamp(28px, 5vw, 56px);
+}
+
+@media (max-width: 1024px) {
+  .staticUnitPanel {
+    /* height (no max-height): con solo "bottom" fijo (sin "top"), el alto
+       de una caja position:fixed no es un valor definido para CSS aunque
+       max-height lo recorte visualmente — el hijo .staticUnitPanel__scroll
+       (height:100%) no tenía contra qué resolver ese 100% y crecía a su
+       alto de contenido real (~1242px en vuelo), con overflow-y:auto sin
+       ningún desbordamiento que scrollear: el contenido bajo el recorte
+       visual era inalcanzable en mobile. height:45vh sí es un valor
+       definido y el 100% del hijo lo resuelve correctamente. */
+    top: auto;
+    bottom: 165px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    height: 45vh;
+    border-radius: 6px;
+  }
+  .staticUnitPanel__scroll {
+    border-left: none;
+    border-radius: 6px;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;

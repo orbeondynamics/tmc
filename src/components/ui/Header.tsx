@@ -8,7 +8,7 @@
 // fallback a src/config/tmcContent.ts si un archivo falta.
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { waypoints } from "@/lib/world/waypoints";
 import { useWorld } from "@/lib/world/WorldContext";
 import { navigateToWaypoint } from "@/lib/world/navigateToWaypoint";
@@ -20,6 +20,7 @@ export function Header({ overlays: headerOverlays }: { overlays: OverlaySection[
   const [openId, setOpenId] = useState<string | null>(null);
   const active = headerOverlays.find((item) => item.id === openId) ?? null;
   const router = useRouter();
+  const pathname = usePathname();
   const { lenisRef, setActiveWaypointId, setHomePanelOpen, pendingRouteRef } = useWorld();
   const heroWaypoint = waypoints.find((w) => w.id === "hero")!;
 
@@ -37,9 +38,12 @@ export function Header({ overlays: headerOverlays }: { overlays: OverlaySection[
               onComplete: () => setActiveWaypointId("hero"),
             });
             // Ver comentario en Hotspots.tsx: marca esta navegación como
-            // interna antes del push.
+            // interna antes del push. Sin scroll:false — este botón también
+            // se usa desde una página de unidad (Header vive ahí también,
+            // ver StaticUnitPage.tsx), que no es parte del mundo 3D y sí
+            // necesita el reset de scroll normal de Next.js al volver a home.
             pendingRouteRef.current = "/";
-            router.push("/", { scroll: false });
+            router.push("/");
           }}
         >
           TMC
@@ -62,22 +66,33 @@ export function Header({ overlays: headerOverlays }: { overlays: OverlaySection[
           className="tmcHeader__inquiry"
           onClick={() => {
             track({ name: "cta_click", cta: "header_private_inquiry" });
-            navigateToWaypoint({
-              waypoint: heroWaypoint,
-              lenisRef,
-              onComplete: () => setActiveWaypointId("hero"),
-            });
-            pendingRouteRef.current = "/";
-            router.push("/", { scroll: false });
-            setHomePanelOpen(true);
-            // El panel de Home (HomeContentPanel) tarda un frame en montar
-            // tras abrirse — se espera antes de desplazar el scroll interno
-            // del panel hasta la sección Private Inquiry.
-            requestAnimationFrame(() => {
-              document
-                .getElementById("private-inquiry")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
-            });
+            // Cambio de alcance (páginas de unidad ya no montan el mundo 3D):
+            // si ya estamos en home, el mundo está montado y este mismo click
+            // puede abrir el panel directo, igual que siempre. Si venimos de
+            // una página de unidad no hay WorldProvider real ahí (useWorld()
+            // degrada a no-ops) — se navega a home con ?inquiry=1 y el
+            // WorldProvider recién montado lo detecta y abre el panel él
+            // mismo (ver WorldContext.tsx).
+            if (pathname === "/") {
+              navigateToWaypoint({
+                waypoint: heroWaypoint,
+                lenisRef,
+                onComplete: () => setActiveWaypointId("hero"),
+              });
+              pendingRouteRef.current = "/";
+              router.push("/");
+              setHomePanelOpen(true);
+              // El panel de Home (HomeContentPanel) tarda un frame en montar
+              // tras abrirse — se espera antes de desplazar el scroll interno
+              // del panel hasta la sección Private Inquiry.
+              requestAnimationFrame(() => {
+                document
+                  .getElementById("private-inquiry")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            } else {
+              router.push("/?inquiry=1");
+            }
           }}
         >
           PRIVATE INQUIRY

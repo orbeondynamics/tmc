@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { TmcWorldPage } from "@/components/TmcWorldPage";
+import { StaticUnitPage } from "@/components/units/StaticUnitPage";
 import { tmcAssets } from "@/config/tmcAssets";
 
 const title = "TMC Project Office — Projects · Investments · Advisory";
@@ -21,5 +21,5 @@ export const metadata: Metadata = {
 };
 
 export default function ProjectOfficePage() {
-  return <TmcWorldPage unitId="tmc-project-office" />;
+  return <StaticUnitPage unitId="tmc-project-office" />;
 }

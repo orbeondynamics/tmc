@@ -8,7 +8,6 @@
 // posteriores (sección 10) sin resolverlo del todo en este bloque MVP.
 
 import { Suspense } from "react";
-import { usePathname } from "next/navigation";
 import { Canvas } from "@react-three/fiber";
 import { Environment } from "@react-three/drei";
 import { CameraRig } from "./CameraRig";
@@ -16,17 +15,12 @@ import { SceneLayers } from "./SceneLayers";
 import { TmcLogo } from "./TmcLogo";
 import { Hotspots } from "./Hotspots";
 
+// Cambio de alcance (páginas de unidad ya no montan el mundo 3D — ver
+// HomeWorldGate.tsx, que solo monta WorldExperience/WorldCanvas cuando
+// pathname === "/"): este Canvas ya solo existe en home, así que el aro
+// central (TmcLogo) y las 4 insignias (Hotspots) se ven siempre juntos, sin
+// necesidad de condicionar por ruta aquí.
 export function WorldCanvas() {
-  // Simplificación de páginas de unidad (diagnóstico REDTEAM): en home se ve
-  // el hub completo (aro central + las 4 insignias, ver Hotspots.tsx para el
-  // filtrado de insignias); en una página de unidad (/luxury, /transport,
-  // /cleaners, /project-office) el aro central deja de mostrarse del todo —
-  // desmontarlo aquí (no un simple "return null" adentro de TmcLogo) también
-  // detiene su propio useFrame (rotación + compensación por distancia), que
-  // no tiene sentido calcular para algo que no se renderiza.
-  const pathname = usePathname();
-  const isHome = pathname === "/";
-
   return (
     <Canvas
       className="worldCanvas"
@@ -40,7 +34,7 @@ export function WorldCanvas() {
       <Suspense fallback={null}>
         <Environment preset="sunset" environmentIntensity={0.6} />
         <SceneLayers />
-        {isHome && <TmcLogo />}
+        <TmcLogo />
         <Hotspots />
       </Suspense>
       <CameraRig />

@@ -5,10 +5,9 @@
 //
 // Server-only (importa `loadMarkdown.ts`, que usa `fs`) — solo se importa
 // desde Server Components (layout.tsx, TmcWorldPage, StaticHero,
-// StaticUnitDetail, HotspotSection). Los componentes cliente (Header,
-// Footer, HomeContentPanel, UnitContentPanel) reciben este contenido ya
-// resuelto como props desde WorldExperience, que a su vez lo recibe de
-// layout.tsx.
+// HotspotSection, StaticUnitPage). Los componentes cliente (Header, Footer,
+// HomeContentPanel) reciben este contenido ya resuelto como props desde
+// WorldExperience (home) o directo desde StaticUnitPage (páginas de unidad).
 //
 // Editar un archivo en content/tmc-world/*.md y recargar basta para que el
 // contenido cambie — ningún componente React necesita tocarse. Si un

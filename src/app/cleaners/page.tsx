@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { TmcWorldPage } from "@/components/TmcWorldPage";
+import { StaticUnitPage } from "@/components/units/StaticUnitPage";
 import { tmcAssets } from "@/config/tmcAssets";
 
 const title = "TMC Cleaners — Private Home & Property Care";
@@ -20,5 +20,5 @@ export const metadata: Metadata = {
 };
 
 export default function CleanersPage() {
-  return <TmcWorldPage unitId="tmc-cleaners" />;
+  return <StaticUnitPage unitId="tmc-cleaners" />;
 }

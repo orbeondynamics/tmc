@@ -1,15 +1,15 @@
 "use client";
 
 // Home — narrativa completa (evolución §8, Master §4.1 "Estructura
-// conceptual del website"). Mismo patrón que UnitContentPanel: aparece
-// superpuesto sobre el mundo persistente sin remontar el Canvas, solo
-// mientras el waypoint activo es "hero" (ruta "/"). Copy recibido como prop
-// desde WorldExperience — resuelto server-side en layout.tsx a partir de
+// conceptual del website"). Aparece superpuesto sobre el mundo 3D, que solo
+// existe en home (ver HomeWorldGate.tsx). Copy recibido como prop desde
+// WorldExperience — resuelto server-side en layout.tsx a partir de
 // content/tmc-world/home.md (fuente principal; Miami y Private Inquiry no
 // tienen archivo propio entre los 11 entregados, así que esas dos piezas
 // siguen viniendo del fallback de src/config/tmcContent.ts).
 // Hero/TMC Concept se resuelve con la propia escena 3D (waypoint hero); las
-// 4 unidades tienen su propio UnitContentPanel por ruta.
+// 4 unidades son páginas estáticas independientes (StaticUnitPage.tsx), no
+// paneles superpuestos aquí.
 
 import { useWorld } from "@/lib/world/WorldContext";
 import type { HomeNarrativeSection } from "@/config/tmcContent";

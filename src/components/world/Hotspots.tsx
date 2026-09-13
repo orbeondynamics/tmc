@@ -8,11 +8,10 @@
 import { Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import * as THREE from "three";
 import { hotspots } from "@/lib/world/hotspots.config";
 import { waypoints } from "@/lib/world/waypoints";
-import { pathToWaypointId } from "@/lib/world/pathToWaypointId";
 import { useWorld } from "@/lib/world/WorldContext";
 import { navigateToWaypoint } from "@/lib/world/navigateToWaypoint";
 import { useAspectCorrectionFactor } from "@/lib/world/useAspectCorrection";
@@ -25,16 +24,11 @@ import { OperatingUnitLogo } from "./OperatingUnitLogo";
 
 export function Hotspots() {
   const router = useRouter();
-  const pathname = usePathname();
   const { lenisRef, activeWaypointId, setActiveWaypointId, pendingRouteRef } = useWorld();
   const { size, camera } = useThree();
-  // Simplificación de páginas de unidad (diagnóstico REDTEAM): en una página
-  // de unidad solo se muestra la insignia de esa unidad, no el resto del hub
-  // (ver WorldCanvas.tsx para el aro central, que se desmonta del todo). En
-  // home (routeUnitId === "hero") se ven las 4, comportamiento sin cambios.
-  const routeUnitId = pathToWaypointId(pathname);
-  const visibleHotspots =
-    routeUnitId === "hero" ? hotspots : hotspots.filter((h) => h.id === routeUnitId);
+  // Cambio de alcance (páginas de unidad ya no montan el mundo 3D — ver
+  // HomeWorldGate.tsx): este componente solo se renderiza en home, así que
+  // ya no hace falta filtrar por ruta — siempre se ven las 4 insignias.
   // Mismo factor que TmcLogo (useAspectCorrection.ts): en mobile portrait el
   // FOV horizontal se reduce mucho más que el vertical, y las anclas X fijas
   // caían fuera del frustum (los 4 marcadores no se veían) — se acercan al
@@ -106,7 +100,7 @@ export function Hotspots() {
 
   return (
     <>
-      {visibleHotspots.map((hotspot) => {
+      {hotspots.map((hotspot) => {
         const waypoint = waypoints.find((w) => w.id === hotspot.id);
         if (!waypoint) return null;
         const isActive = activeWaypointId === hotspot.id;
@@ -135,20 +129,30 @@ export function Hotspots() {
                 aria-label={`${hotspot.label} — ${hotspot.positioning}`}
                 onClick={() => {
                   track({ name: "hotspot_click", unitId: hotspot.id, route: hotspot.route });
+                  // Cambio de alcance: la página de destino ya no es parte del
+                  // mundo 3D — navegar de inmediato (como antes) cortaría el
+                  // vuelo de cámara a medio camino, porque el cambio de ruta
+                  // desmonta el mundo entero (ver HomeWorldGate.tsx). El push
+                  // se difiere al onComplete del vuelo para conservar la
+                  // transición cinematográfica ya aprobada; al llegar, se
+                  // cambia a la página estática de esa unidad.
                   navigateToWaypoint({
                     waypoint,
                     lenisRef,
-                    onComplete: () => setActiveWaypointId(hotspot.id),
+                    onComplete: () => {
+                      setActiveWaypointId(hotspot.id);
+                      pendingRouteRef.current = hotspot.route;
+                      // Sin scroll:false aquí a propósito (a diferencia del
+                      // resto de la navegación de este proyecto): el destino
+                      // ya no es parte del mundo 3D con scroll continuo, es
+                      // una página estática aparte (StaticUnitPage.tsx) — sin
+                      // esto, heredaba el scrollY que traía el vuelo de
+                      // cámara (bug real: aterrizaba a mitad del panel en vez
+                      // de arriba). Next.js debe resetear el scroll como en
+                      // cualquier navegación normal.
+                      router.push(hotspot.route);
+                    },
                   });
-                  // pendingRouteRef marca esta navegación como interna antes del
-                  // push — ScrollDriver (WorldExperience.tsx) la compara contra
-                  // usePathname() para no re-disparar un salto de scroll cuando
-                  // el cambio de ruta ya lo maneja esta misma animación de arriba.
-                  pendingRouteRef.current = hotspot.route;
-                  // scroll:false — Next.js no debe resetear el scroll al navegar; el
-                  // scroll real (Lenis) es quien conduce la pose de cámara y ya se
-                  // está animando hacia el waypoint en la línea de arriba.
-                  router.push(hotspot.route, { scroll: false });
                 }}
               >
                 <OperatingUnitLogo
