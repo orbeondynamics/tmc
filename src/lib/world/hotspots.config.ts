@@ -19,16 +19,30 @@ export interface HotspotConfig {
 // de insignia"): distribuidos en 4 cuadrantes diagonales a exactamente 90°
 // de separación angular entre sí, a radio = 1.0x el diámetro del logo
 // corregido (LOGO_SIZE=12 → diámetro del aro = 14.9725 unidades de mundo;
-// offset X/Y = radio × cos/sin(45°) = 10.59). Antes los 4 anchors estaban
-// angularmente agrupados en pares por lado (Luxury/Cleaners casi en el
-// mismo ángulo, solo 7 unidades de separación vertical) — con insignias al
-// 74% del diámetro del logo eso producía superposición entre pares del
-// mismo lado. La distribución 90° verdadera separa cualquier par adyacente
-// por ~21.17 unidades (>> que el diámetro de insignia de ~11.08 unidades),
-// sin superposición y sin necesitar ningún ajuste radial adicional. El eje
-// Z (profundidad/parallax) de cada anchor se conserva exactamente igual al
-// valor anterior — no forma parte de este ajuste angular.
-const HOTSPOT_RADIUS_XY = 10.59;
+// offset X/Y = radio × cos/sin(45°), originalmente 10.59). Antes los 4
+// anchors estaban angularmente agrupados en pares por lado (Luxury/Cleaners
+// casi en el mismo ángulo, solo 7 unidades de separación vertical) — con
+// insignias al 74% del diámetro del logo eso producía superposición entre
+// pares del mismo lado. La distribución 90° verdadera separa cualquier par
+// adyacente por 2×radio (>> que el diámetro de insignia), sin superposición.
+//
+// Radio subido de 10.59 a 14 (REDTEAM "logos muy arriba, cerca del header"):
+// con 10.59, las insignias superiores (Luxury/Transport) quedaban tan cerca
+// del centro que ni siquiera el mecanismo anti-colisión de
+// correctedHotspotAnchor.ts (comprimir Y hacia el logo) tenía margen real
+// para alejarlas del header sin invadir el aro — confirmado con simulación
+// exacta (misma proyección de cámara que usa esa función) en 12 combinaciones
+// de ancho/alto reales (1024×768 a 2560×1440 en desktop, 375×812 a 1100×900
+// en mobile/tablet): con radio 10.59, 1366×768 y 1920×1080 mostraban overlap
+// real (residual de 48-62px, opacidad forzada al piso 0.45); un ajuste solo
+// en Y no alcanzaba sin meter la insignia dentro del aro (el piso de
+// distancia mínima centro-logo↔centro-insignia lo impide). Subir el radio
+// completo (X e Y, preservando el ángulo de 45° y la simetría de los 4
+// cuadrantes) aleja la insignia del aro Y del header/footer a la vez — con
+// radio 14, las 12 combinaciones probadas dan opacidad 1.0 y residual 0px
+// sin necesitar compresión ni atenuación. El eje Z (profundidad/parallax) de
+// cada anchor se conserva exactamente igual al valor anterior.
+const HOTSPOT_RADIUS_XY = 14;
 
 export const hotspots: HotspotConfig[] = [
   {
