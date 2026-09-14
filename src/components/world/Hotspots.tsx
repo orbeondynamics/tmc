@@ -81,6 +81,7 @@ export function Hotspots() {
         aspectFactor,
         logoY: LOGO_POSITION[1],
         camera,
+        viewportWidth: size.width,
         viewportHeight: size.height,
         headerBottomPx,
         footerTopPx,

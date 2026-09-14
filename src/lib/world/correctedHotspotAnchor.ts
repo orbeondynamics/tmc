@@ -23,21 +23,45 @@
 // getBoundingClientRect, no un ancho de viewport asumido), se calcula cuánta
 // compresión hace falta para devolverla a zona segura.
 //
-// El eje X ya se corrige aparte vía aspectFactor (útiles distintos: aspect
-// ratio vs. proximidad real a header/footer) y no se toca aquí — el defecto
-// diagnosticado es vertical. La compresión de Y tiene un piso derivado de la
-// geometría real del aro (MIN_CENTER_DISTANCE_WORLD abajo) para no
-// intercambiar un overlap por otro: comprimir Y sin límite acerca la
-// insignia al logo hasta que sus discos se tocan — confirmado con captura
-// real en el waypoint hero, donde una primera versión de este mecanismo
-// (piso fijo de 0.3, heredado del ajuste mobile anterior) dejaba el aro
-// visiblemente encimado con las insignias superiores.
+// Bug real encontrado en validación mobile (375px, waypoint hero, insignias
+// Luxury/Transport): incluso en reposo, sin ninguna colisión de
+// header/footer de por medio, la insignia YA estaba dentro de la zona de
+// exclusión del aro en ese aspect. Causa raíz real (no de este archivo):
+// TmcLogo.tsx renderizaba el aro a tamaño completo en cualquier aspect,
+// mientras que badgeDiameter.ts YA ASUMÍA que el diámetro aparente del aro
+// se reduce con aspectFactor (apparentRingDiameterWorld =
+// RING_OUTER_RADIUS*2*aspectFactor) — el wordmark sí aplicaba ese factor
+// (uniformScale), el mesh del aro no. En aspects angostos el aro se veía
+// (y ocupaba) más grande de lo que esta función asumía, dejando a las
+// insignias superiores sin ningún Y disponible para alejarse del header sin
+// invadir el aro. Corregido en TmcLogo.tsx (el mesh del aro ahora también
+// escala por aspectFactor, igual que el wordmark) — MIN_CENTER_DISTANCE_WORLD
+// abajo se recalcula con ese mismo aspectFactor para no quedar desincronizado
+// del tamaño real ya renderizado.
+//
+// Como margen adicional (el aro más chico ya resuelve el caso mobile por sí
+// solo, pero se mantiene por completitud/robustez ante aspects intermedios):
+// si comprimir Y con el X ya corregido por aspectFactor no alcanza a
+// despejar el header/footer, se permite ensanchar X — medido en vivo contra
+// el frustum real de este frame (mismo camera.project(), ahora también en
+// X, contra el ancho real del viewport, sin asumir un breakpoint) y nunca
+// más allá del ancho de diseño original (ax, previo a aspectFactor) — antes
+// de recurrir al fallback de opacidad.
+//
+// La compresión de Y sigue teniendo un piso derivado de la geometría real
+// del aro (MIN_CENTER_DISTANCE_WORLD abajo) para no intercambiar un overlap
+// por otro: comprimir Y sin límite acerca la insignia al logo hasta que sus
+// discos se tocan — confirmado con captura real en el waypoint hero, donde
+// una primera versión de este mecanismo (piso fijo de 0.3, heredado del
+// ajuste mobile anterior) dejaba el aro visiblemente encimado con las
+// insignias superiores.
 
 import * as THREE from "three";
 import { RING_OUTER_RADIUS } from "@/components/world/TmcLogo";
 
-/** Margen de seguridad en píxeles entre el borde del header/footer y el
- * punto más cercano de la insignia — evita dejarla pegada justo al límite. */
+/** Margen de seguridad en píxeles entre el borde del header/footer (o del
+ * borde de pantalla, en X) y el punto más cercano de la insignia — evita
+ * dejarla pegada justo al límite. */
 const SAFE_MARGIN_PX = 16;
 /** Mismo ratio que BADGE_DIAMETER_RATIO en badgeDiameter.ts (prompt maestro
  * sección 6.2) — duplicado como literal en vez de importado para no acoplar
@@ -47,10 +71,6 @@ const BADGE_DIAMETER_RATIO = 0.74;
  * insignia, para que el piso de compresión no las deje exactamente
  * tangentes. */
 const RING_CLEARANCE_MARGIN_WORLD = 0.5;
-/** Distancia mínima (mundo) centro-del-logo↔centro-de-insignia para que el
- * disco de la insignia no invada el disco del aro. */
-const MIN_CENTER_DISTANCE_WORLD =
-  RING_OUTER_RADIUS + RING_OUTER_RADIUS * BADGE_DIAMETER_RATIO + RING_CLEARANCE_MARGIN_WORLD;
 /** Cuando el piso anti-colisión-con-el-aro impide despejar del todo el
  * header/footer (residual confirmado con captura real: waypoint Transport,
  * insignia Project Office contra el footer, ~46-87px), se atenúa la
@@ -59,6 +79,16 @@ const MIN_CENTER_DISTANCE_WORLD =
  * puntual. A partir de este residual (px) la opacidad ya está en su piso. */
 const OPACITY_FADE_RANGE_PX = 90;
 const MIN_OPACITY = 0.45;
+
+/** Distancia mínima (mundo) centro-del-logo↔centro-de-insignia para que el
+ * disco de la insignia no invada el disco del aro — derivada del tamaño
+ * REAL renderizado del aro en este aspect (TmcLogo.tsx ahora escala el mesh
+ * del aro por aspectFactor; esta función debe usar el mismo factor para no
+ * desincronizarse de lo que realmente se ve en pantalla). */
+function getMinCenterDistanceWorld(aspectFactor: number): number {
+  const ringRadius = RING_OUTER_RADIUS * aspectFactor;
+  return ringRadius + ringRadius * BADGE_DIAMETER_RATIO + RING_CLEARANCE_MARGIN_WORLD;
+}
 
 function projectedScreenY(
   scratch: THREE.Vector3,
@@ -69,11 +99,24 @@ function projectedScreenY(
   return ((1 - scratch.y) / 2) * viewportHeight;
 }
 
+function projectedScreenX(
+  scratch: THREE.Vector3,
+  camera: THREE.Camera,
+  viewportWidth: number
+): number {
+  scratch.project(camera);
+  return ((1 + scratch.x) / 2) * viewportWidth;
+}
+
 export interface ScreenSafeAnchorInput {
   anchor: [number, number, number];
   aspectFactor: number;
   logoY: number;
   camera: THREE.Camera;
+  /** Ancho real del viewport en píxeles (size.width de useThree) — usado
+   * solo para el margen X de emergencia descrito arriba (mismo criterio que
+   * viewportHeight ya usaba para header/footer). */
+  viewportWidth: number;
   viewportHeight: number;
   /** Borde inferior real del <header> en píxeles de pantalla (getBoundingClientRect().bottom). */
   headerBottomPx: number;
@@ -100,45 +143,48 @@ export interface ScreenSafeAnchorResult {
   opacity: number;
 }
 
-export function getCorrectedHotspotAnchor({
-  anchor,
-  aspectFactor,
-  logoY,
-  camera,
-  viewportHeight,
-  headerBottomPx,
-  footerTopPx,
-  markerRadiusPx,
-  scratch,
-}: ScreenSafeAnchorInput): ScreenSafeAnchorResult {
-  const [ax, ay, az] = anchor;
-  const correctedX = ax * aspectFactor;
+interface CompressionAttempt {
+  position: [number, number, number];
+  opacity: number;
+  residualPx: number;
+}
 
-  const safeTop = headerBottomPx + SAFE_MARGIN_PX + markerRadiusPx;
-  const safeBottom = footerTopPx - SAFE_MARGIN_PX - markerRadiusPx;
-
-  scratch.set(correctedX, ay, az);
+/** Intenta despejar el header/footer comprimiendo Y hacia logoY, con el
+ * piso anti-colisión-con-el-aro derivado de xForRender (distancia real al
+ * centro del logo en X para ESTE intento). */
+function attemptVerticalCompression(
+  xForRender: number,
+  ay: number,
+  az: number,
+  logoY: number,
+  minCenterDistanceWorld: number,
+  camera: THREE.Camera,
+  viewportHeight: number,
+  safeTop: number,
+  safeBottom: number,
+  scratch: THREE.Vector3
+): CompressionAttempt {
+  scratch.set(xForRender, ay, az);
   const yUncompressed = projectedScreenY(scratch, camera, viewportHeight);
 
   if (yUncompressed >= safeTop && yUncompressed <= safeBottom) {
-    return { position: [correctedX, ay, az], opacity: 1 };
+    return { position: [xForRender, ay, az], opacity: 1, residualPx: 0 };
   }
 
-  scratch.set(correctedX, logoY, az);
+  scratch.set(xForRender, logoY, az);
   const yAtLogoCenter = projectedScreenY(scratch, camera, viewportHeight);
 
   // Piso de compresión: la insignia nunca debe acercarse tanto al logo que
   // su disco invada el disco del aro. Derivado de la geometría real (no un
-  // valor fijo calibrado a mano sobre un solo caso): con X sin comprimir,
-  // ¿cuánto offset Y hace falta para que distancia(centro-logo,
+  // valor fijo calibrado a mano sobre un solo caso): con X fija en
+  // xForRender, ¿cuánto offset Y hace falta para que distancia(centro-logo,
   // centro-insignia) = √(X² + Y²) no caiga por debajo de
-  // MIN_CENTER_DISTANCE_WORLD? Si X solo ya alcanza, no hace falta Y (piso
-  // en 0); si ni siquiera Y=offset completo (k=1) alcanza (aspects muy
-  // angostos, X comprimido por aspectFactor), el piso se topa en 1 — lo
-  // más que se puede alejar sin tocar el eje X, que esta función no toca.
+  // minCenterDistanceWorld? Si X sola ya alcanza, no hace falta Y (piso en
+  // 0); si ni siquiera Y=offset completo (k=1) alcanza, el piso se topa en
+  // 1 — lo más que se puede comprimir sin invadir el aro con esta X.
   const yOffset = ay - logoY;
   const minCompressionSq =
-    (MIN_CENTER_DISTANCE_WORLD ** 2 - correctedX ** 2) / (yOffset * yOffset || 1);
+    (minCenterDistanceWorld ** 2 - xForRender ** 2) / (yOffset * yOffset || 1);
   const minCompression = THREE.MathUtils.clamp(Math.sqrt(Math.max(0, minCompressionSq)), 0, 1);
 
   const pushingDown = yUncompressed < safeTop;
@@ -153,10 +199,95 @@ export function getCorrectedHotspotAnchor({
   // exactamente a target (ver comentario de OPACITY_FADE_RANGE_PX arriba).
   // Se proyecta la posición FINAL (ya comprimida) para medir cuánto queda
   // todavía dentro de la franja insegura, en vez de asumirlo a partir de k.
-  scratch.set(correctedX, correctedY, az);
+  scratch.set(xForRender, correctedY, az);
   const yFinal = projectedScreenY(scratch, camera, viewportHeight);
   const residualPx = pushingDown ? Math.max(0, safeTop - yFinal) : Math.max(0, yFinal - safeBottom);
   const opacity = THREE.MathUtils.clamp(1 - residualPx / OPACITY_FADE_RANGE_PX, MIN_OPACITY, 1);
 
-  return { position: [correctedX, correctedY, az], opacity };
+  return { position: [xForRender, correctedY, az], opacity, residualPx };
+}
+
+export function getCorrectedHotspotAnchor({
+  anchor,
+  aspectFactor,
+  logoY,
+  camera,
+  viewportWidth,
+  viewportHeight,
+  headerBottomPx,
+  footerTopPx,
+  markerRadiusPx,
+  scratch,
+}: ScreenSafeAnchorInput): ScreenSafeAnchorResult {
+  const [ax, ay, az] = anchor;
+  const correctedX = ax * aspectFactor;
+  const minCenterDistanceWorld = getMinCenterDistanceWorld(aspectFactor);
+
+  const safeTop = headerBottomPx + SAFE_MARGIN_PX + markerRadiusPx;
+  const safeBottom = footerTopPx - SAFE_MARGIN_PX - markerRadiusPx;
+
+  const base = attemptVerticalCompression(
+    correctedX,
+    ay,
+    az,
+    logoY,
+    minCenterDistanceWorld,
+    camera,
+    viewportHeight,
+    safeTop,
+    safeBottom,
+    scratch
+  );
+
+  if (base.residualPx === 0) {
+    return { position: base.position, opacity: base.opacity };
+  }
+
+  // Margen X de emergencia (ver comentario de archivo arriba): solo se usa
+  // cuando comprimir Y con el X ya corregido por aspectFactor no alcanzó a
+  // despejar el header/footer. Se mide, en este mismo frame, hasta qué X de
+  // pantalla real cabe la insignia sin tocar el borde del viewport (mismo
+  // camera.project() que el resto de este archivo, sin asumir un ancho de
+  // breakpoint), y se ensancha el anchor hacia allá — nunca más allá del
+  // ancho de diseño original (ax, previo a aspectFactor).
+  scratch.set(0, ay, az);
+  const screenXAtCenter = projectedScreenX(scratch, camera, viewportWidth);
+  scratch.set(ax, ay, az);
+  const screenXAtFullAnchor = projectedScreenX(scratch, camera, viewportWidth);
+
+  const targetScreenX =
+    ax >= 0 ? viewportWidth - SAFE_MARGIN_PX - markerRadiusPx : SAFE_MARGIN_PX + markerRadiusPx;
+  const screenXSlope = screenXAtFullAnchor - screenXAtCenter;
+  const maxXWorld =
+    Math.abs(screenXSlope) < 1e-3
+      ? ax
+      : (ax * (targetScreenX - screenXAtCenter)) / screenXSlope;
+
+  const sign = Math.sign(ax) || 1;
+  const widenedMagnitude = THREE.MathUtils.clamp(
+    Math.abs(maxXWorld),
+    Math.abs(correctedX),
+    Math.abs(ax)
+  );
+  const xWidened = sign * widenedMagnitude;
+
+  if (xWidened === correctedX) {
+    return { position: base.position, opacity: base.opacity };
+  }
+
+  const widened = attemptVerticalCompression(
+    xWidened,
+    ay,
+    az,
+    logoY,
+    minCenterDistanceWorld,
+    camera,
+    viewportHeight,
+    safeTop,
+    safeBottom,
+    scratch
+  );
+
+  const best = widened.residualPx < base.residualPx ? widened : base;
+  return { position: best.position, opacity: best.opacity };
 }

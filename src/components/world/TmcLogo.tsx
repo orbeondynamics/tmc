@@ -167,8 +167,26 @@ export function TmcLogo({ position = LOGO_POSITION }: { position?: [number, numb
       </group>
       {/* TorusGeometry por defecto queda en el plano XY (cara hacia +Z) —
           exactamente de frente a la cámara, igual que el TMC — sin rotación
-          propia adicional: gira junto con el group padre. */}
-      <mesh material={goldMaterial}>
+          propia adicional: gira junto con el group padre.
+          scale={aspectFactor}: bug real encontrado en validación mobile
+          (375px, waypoint hero) — badgeDiameter.ts ya ASUME que el diámetro
+          aparente del aro se reduce con aspectFactor (apparentRingDiameterWorld
+          = RING_OUTER_RADIUS*2*aspectFactor, usado para calcular el tamaño de
+          insignia), pero este mesh nunca aplicaba ese mismo factor — el
+          wordmark sí (uniformScale = BASE_UNIFORM_SCALE*aspectFactor), el aro
+          no, pese a compartir el mismo group y estar pensados como una sola
+          composición. Resultado: en aspects angostos el aro se renderizaba a
+          su tamaño completo (sin comprimir) mientras las insignias sí se
+          comprimían — el aro dominaba la mitad de la pantalla y su zona de
+          exclusión (correctedHotspotAnchor.ts, MIN_CENTER_DISTANCE_WORLD)
+          dejaba a las insignias superiores sin ningún Y disponible para
+          alejarse del header, encimadas sobre él sin margen real para
+          moverse. En aspect de referencia (16:9) aspectFactor=1 — cero
+          cambio visual en desktop/tablet ya validado; el aro ahora escala
+          igual que el wordmark en cualquier aspect, restaurando la
+          proporción aro:wordmark calibrada en vez de solo aplicarla al
+          wordmark. */}
+      <mesh material={goldMaterial} scale={aspectFactor}>
         <torusGeometry args={[RING_CENTERLINE, RING_TUBE_RADIUS, 24, 96]} />
       </mesh>
     </group>
