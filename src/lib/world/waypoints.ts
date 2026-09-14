@@ -55,17 +55,48 @@ export interface CameraWaypoint {
 //    TODO el recorrido (no solo los 5 puntos de reposo): margen mínimo en
 //    cualquier punto del scroll = 188px.
 //
-// Ninguno de estos ajustes cambia el encuadre final de hero o project-office
-// (posición/target/fov intactos ahí).
+// Corrección "ascensor se siente como zoom, no como desplazamiento vertical"
+// (REDTEAM, ronda posterior a la de arriba — diagnóstico con números reales,
+// no otro parche de curva): medidos los deltas reales por eje entre cada par
+// de waypoints consecutivos, Y nunca lideraba en ningún tramo — su rango
+// total en todo el recorrido (1 a 8, 7 unidades) era ~13% del rango de X (52
+// unidades) y ~17% del de Z (42 unidades). El tramo más extremo,
+// hero-to-luxury-pace→tmc-luxury, tenía Z moviéndose 13.5× más que Y.
+//
+// Autorizado explícitamente por el dueño del proyecto (incluye cambiar el
+// encuadre final ya aprobado de tmc-luxury y tmc-project-office). Se baja
+// SOLO position.y en esos dos waypoints y sus puntos de "pace" — target.y
+// queda intacto (no se toca en ninguno de los 4). Intento previo (revertido):
+// trasladar position.y Y target.y la misma distancia, preservando el pitch
+// exacto — matemáticamente más "puro" para la sensación de traslación, pero
+// las insignias viven en posiciones FIJAS del mundo (hotspots.config.ts) y
+// trasladar cámara+target juntos aumenta el ángulo hacia ellas, sacándolas
+// mucho más de cuadro de lo que ya estaban (confirmado con instrumentación:
+// insignia LUXURY pasaba de top=-206px, ya fuera de cuadro en el diseño
+// ORIGINAL sin tocar — es esperado, el vuelo de cámara pasa POR ENCIMA del
+// marcador hacia el close-up, igual que en Cleaners/Transport/ProjectOffice
+// — a top=-733px, un salto mucho mayor). Solo mover position.y deja el
+// resultado casi idéntico al original (-220px vs -206px) — la altura de
+// cámara cambia (la traslación real que se necesita) sin empeorar
+// perceptiblemente qué tan fuera de cuadro queda el marcador respecto a como
+// ya estaba.
+//
+// Resultado (|ΔZ|/|ΔY| por tramo, antes → después): hero→pace1 3.7→1.4;
+// pace1→luxury 13.5→4.5 (hero→luxury combinado: 7.6→2.7); cleaners→pace2
+// 3.0→1.0; pace2→project-office 3.7→1.0. Los tramos luxury→transport y
+// transport→cleaners no se tocan — ya son laterales (X domina, no Z), sin
+// sensación de zoom que corregir ahí.
+//
+// hero y tmc-transport/tmc-cleaners quedan intactos (posición/target/fov).
 export const waypoints: CameraWaypoint[] = [
   { id: "hero", position: [0, 6, 62], target: [0, -2, -10], fov: 42, scrollProgress: 0 },
-  { id: "hero-to-luxury-pace", position: [-13, 3, 51], target: [-10, -2.5, -7], fov: 41, scrollProgress: 0.125 },
+  { id: "hero-to-luxury-pace", position: [-13, -2, 51], target: [-10, -2.5, -7], fov: 41, scrollProgress: 0.125 },
   // target.x=-10 (antes -20) — margen de seguridad frente al frustum, efecto colateral del punto 3 (ver comentario arriba), no un cambio estético.
-  { id: "tmc-luxury", position: [-26, 1, 24], target: [-10, -3, -4], fov: 38, scrollProgress: 0.25 },
+  { id: "tmc-luxury", position: [-26, -8, 24], target: [-10, -3, -4], fov: 38, scrollProgress: 0.25 },
   // target.x=6 (antes 26) — margen de seguridad frente al frustum, no un cambio estético (ver comentario arriba, punto 3).
   { id: "tmc-transport", position: [22, 8, 34], target: [6, 5, -26], fov: 38, scrollProgress: 0.5 },
   // target.x=-10 (antes -30) — corrige que la cámara no giraba hacia el hub (ver comentario arriba, punto 1).
   { id: "tmc-cleaners", position: [-30, 6, 30], target: [-10, 3, -15], fov: 38, scrollProgress: 0.75 },
-  { id: "cleaners-to-project-office-pace", position: [-8, 4.35, 25], target: [-1, 2, -5], fov: 38, scrollProgress: 0.875 },
-  { id: "tmc-project-office", position: [14, 3, 20], target: [8, 1, 5], fov: 38, scrollProgress: 1 },
+  { id: "cleaners-to-project-office-pace", position: [-8, 1, 25], target: [-1, 2, -5], fov: 38, scrollProgress: 0.875 },
+  { id: "tmc-project-office", position: [14, -4, 20], target: [8, 1, 5], fov: 38, scrollProgress: 1 },
 ];
