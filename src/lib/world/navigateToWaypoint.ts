@@ -20,7 +20,13 @@ export function navigateToWaypoint({
   onComplete?: () => void;
 }) {
   const lenis = lenisRef.current;
-  if (!lenis) return;
+  // Guarda explícita sobre scrollTo (no solo `!lenis`): bug real confirmado
+  // con stack trace — lenisRef puede llegar aquí con un valor truthy que NO
+  // es una instancia real de Lenis (ver WorldContext.tsx, DEGRADED_CONTEXT,
+  // causa raíz corregida ahí). Esta guarda es la red de seguridad adicional
+  // para que este archivo nunca vuelva a asumir que "truthy" implica "Lenis
+  // real", sin importar de dónde venga el ref.
+  if (!lenis || typeof lenis.scrollTo !== "function") return;
   const targetY = waypoint.scrollProgress * lenis.limit;
   lenis.scrollTo(targetY, {
     duration: 1.6,

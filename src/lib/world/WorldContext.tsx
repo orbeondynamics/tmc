@@ -71,15 +71,26 @@ const WorldContext = createContext<WorldContextValue | null>(null);
 // Home / PRIVATE INQUIRY siguen navegando bien (router.push no depende de
 // esto); lo único que se pierde ahí afuera es la animación de cámara, que no
 // tiene sentido sin mundo 3D montado.
-const NOOP_REF: React.MutableRefObject<null> = { current: null };
+//
+// Bug real confirmado con stack trace (validación páginas de unidad, click en
+// el logo Home del header): lenisRef y pendingRouteRef compartían el MISMO
+// objeto NOOP_REF. Header.tsx escribe `pendingRouteRef.current = "/"`
+// inmediatamente después de llamar navigateToWaypoint() en el mismo handler
+// — al ser el mismo objeto, esa escritura mutaba TAMBIÉN lenisRef.current
+// (de null a la string "/"). El primer click no fallaba (lenisRef.current
+// todavía null en ese momento, navigateToWaypoint hacía early-return), pero
+// dejaba lenisRef.current envenenado con "/"; cualquier click posterior leía
+// un valor truthy no-Lenis y explotaba en lenis.scrollTo (no es función).
+// Cada ref no-op ahora es su propio objeto — nunca deben compartir instancia,
+// aunque ambos sean "solo un contenedor de null" en este contexto degradado.
 function noop() {}
 const DEGRADED_CONTEXT: WorldContextValue = {
   progressRef: { current: { t: 0 } },
-  lenisRef: NOOP_REF,
+  lenisRef: { current: null },
   initialWaypointId: "hero",
   activeWaypointId: "hero",
   setActiveWaypointId: noop,
-  pendingRouteRef: NOOP_REF,
+  pendingRouteRef: { current: null },
   introComplete: true,
   setIntroComplete: noop,
   homePanelOpen: false,
