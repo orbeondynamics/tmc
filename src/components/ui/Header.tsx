@@ -24,30 +24,48 @@ export function Header({ overlays: headerOverlays }: { overlays: OverlaySection[
   const { lenisRef, setActiveWaypointId, setHomePanelOpen, pendingRouteRef } = useWorld();
   const heroWaypoint = waypoints.find((w) => w.id === "hero")!;
 
+  // Extraído (antes vivía solo en el onClick del logo): el nuevo enlace de
+  // texto "← Back to TMC" (Bug 5, página de unidad) necesita EXACTAMENTE el
+  // mismo comportamiento que el logo — no un atajo aparte que pueda
+  // desincronizarse si uno de los dos cambia en el futuro. Fuera de home
+  // (páginas de unidad) useWorld() degrada a no-ops (WorldContext.tsx), así
+  // que navigateToWaypoint/setActiveWaypointId ahí no hacen nada real — el
+  // efecto práctico es equivalente a un router.push("/") simple, pero se
+  // mantiene la llamada completa para que el comportamiento sea IDÉNTICO
+  // si algún día esto se usa también dentro del mundo 3D.
+  function goHome() {
+    navigateToWaypoint({
+      waypoint: heroWaypoint,
+      lenisRef,
+      onComplete: () => setActiveWaypointId("hero"),
+    });
+    // Ver comentario en Hotspots.tsx: marca esta navegación como interna
+    // antes del push. Sin scroll:false — se usa también desde una página
+    // de unidad (Header vive ahí también, ver StaticUnitPage.tsx), que no
+    // es parte del mundo 3D y sí necesita el reset de scroll normal de
+    // Next.js al volver a home.
+    pendingRouteRef.current = "/";
+    router.push("/");
+  }
+
   return (
     <>
       <header className="tmcHeader">
-        <button
-          type="button"
-          className="tmcHeader__home"
-          aria-label="TMC World — Home"
-          onClick={() => {
-            navigateToWaypoint({
-              waypoint: heroWaypoint,
-              lenisRef,
-              onComplete: () => setActiveWaypointId("hero"),
-            });
-            // Ver comentario en Hotspots.tsx: marca esta navegación como
-            // interna antes del push. Sin scroll:false — este botón también
-            // se usa desde una página de unidad (Header vive ahí también,
-            // ver StaticUnitPage.tsx), que no es parte del mundo 3D y sí
-            // necesita el reset de scroll normal de Next.js al volver a home.
-            pendingRouteRef.current = "/";
-            router.push("/");
-          }}
-        >
-          TMC
-        </button>
+        <div className="tmcHeader__brand">
+          <button type="button" className="tmcHeader__home" aria-label="TMC World — Home" onClick={goHome}>
+            TMC
+          </button>
+          {/* Bug 5: "no hay forma clara de volver a home" desde una unidad —
+              el logo YA navegaba a "/" (confirmado arriba, sin cambios), pero
+              no se leía como un control de navegación. Este enlace de texto
+              coexiste con el logo (las 2 formas pedidas), solo en páginas de
+              unidad (pathname !== "/" — en home ya estamos ahí, no aplica). */}
+          {pathname !== "/" && (
+            <button type="button" className="tmcHeader__backLink" onClick={goHome}>
+              ← Back to TMC
+            </button>
+          )}
+        </div>
         {/* navGroup + 2 <nav> (en vez de un solo <nav> con los 5): en
             desktop, .tmcHeader__nav pasa a display:contents y ambos
             grupos se aplanan en .tmcHeader__navGroup — visualmente

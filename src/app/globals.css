@@ -127,8 +127,17 @@ body:has(.worldRoot) .tmcFallback {
   padding: 20px clamp(16px, 4vw, 48px);
   pointer-events: none;
 }
-.tmcHeader__home {
+/* Wrapper del logo + enlace "← Back to TMC" (Bug 5, solo páginas de
+   unidad — ver Header.tsx). Es el hijo real de la columna 1 del grid
+   ahora (antes era .tmcHeader__home directo); en home, sin el enlace, se
+   comporta exactamente igual que antes (un solo hijo, mismo tamaño). */
+.tmcHeader__brand {
   pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.tmcHeader__home {
   font-family: var(--font-display), serif;
   font-size: 22px;
   letter-spacing: 0.08em;
@@ -141,9 +150,29 @@ body:has(.worldRoot) .tmcFallback {
   border-radius: 50%;
   width: 40px;
   height: 40px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* Bug 5: "sin forma clara de volver a home" desde una unidad — el logo ya
+   navegaba a "/" (confirmado con evidencia de código, sin cambios), pero
+   no se leía como control de navegación. Enlace de texto explícito,
+   dorado de marca, coexiste con el logo (2 formas, como pidió el dueño
+   del proyecto) — solo en páginas de unidad (Header.tsx: pathname!=="/"). */
+.tmcHeader__backLink {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 1px 8px rgba(0, 0, 0, 0.6);
+  opacity: 0.9;
+  transition: opacity 0.2s, color 0.2s;
+}
+.tmcHeader__backLink:hover {
+  opacity: 1;
+  color: var(--gold-light);
 }
 /* .tmcHeader__navGroup hace el rol de flex-row centrado que antes tenía
    .tmcHeader__nav directamente — ahora hay 2 <nav> (primary/secondary,
@@ -966,10 +995,28 @@ body:has(.worldRoot) .tmcFallback {
     grid-template-rows: auto auto auto;
     row-gap: 8px;
   }
-  .tmcHeader__home {
+  .tmcHeader__brand {
     grid-row: 1 / 4;
     grid-column: 1;
     align-self: center;
+    /* Bug real de validación: incluso apilado (columna, no fila), el ancho
+       de la columna del grid sigue siendo el del hijo MÁS ANCHO — el
+       enlace "← Back to TMC" (~100px) es más ancho que el círculo del
+       logo (40px), así que la columna 1 crecía igual y le robaba ese
+       espacio a las 3 filas de la derecha (ya calibradas al presupuesto
+       vertical más ajustado, Bug 1/2) — confirmado: el nav se salía del
+       viewport a la derecha. Fix real: sacar el enlace del flujo con
+       position:absolute (no contribuye al ancho de .tmcHeader__brand) y
+       anclarlo debajo del círculo — la columna 1 vuelve a medir 40px,
+       igual que antes de este bug. */
+    position: relative;
+  }
+  .tmcHeader__backLink {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    font-size: 11px;
   }
   .tmcHeader__navGroup {
     display: contents;
@@ -1061,7 +1108,20 @@ body:has(.worldRoot) .tmcFallback {
      175px deja margen real, verificado en 1366/1440/1920. */
   bottom: 175px;
   z-index: 15;
-  width: min(480px, 92vw);
+  /* Bug 4 real de validación: "min(480px, 92vw)" es un tope FIJO en
+     píxeles — a partir de ~522px de ancho (donde 92vw ya supera 480px) el
+     panel queda clavado en 480px sin importar cuánto crezca la ventana, así
+     que en desktop maximizado ocupa una fracción MENOR del ancho disponible
+     que en una ventana chica (firma clásica de un ancho heredado de cuando
+     el hub 3D competía por espacio al lado — Fase G lo quitó, pero el ancho
+     no se liberó). clamp(480px, 34vw, 680px): mismo piso de 480px que antes
+     (nada se angosta respecto al valor ya validado), pero crece con el
+     viewport a partir de ~1412px — el caso real de "desktop maximizado" que
+     reportó el dueño del proyecto — hasta un techo de 680px para no
+     estirar demasiado la línea de lectura en monitores ultra-anchos.
+     Verificado en 5 anchos entre 900 y 1920px (ver evidencia de la
+     ronda). */
+  width: clamp(480px, 34vw, 680px);
   overflow: hidden;
 }
 .staticUnitPanel__scroll {
