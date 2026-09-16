@@ -48,19 +48,44 @@ export function Header({ overlays: headerOverlays }: { overlays: OverlaySection[
         >
           TMC
         </button>
-        <nav className="tmcHeader__nav" aria-label="TMC — navegación corporativa">
-          {headerOverlays.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className="tmcHeader__navItem"
-              aria-expanded={openId === item.id}
-              onClick={() => setOpenId(openId === item.id ? null : item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        {/* navGroup + 2 <nav> (en vez de un solo <nav> con los 5): en
+            desktop, .tmcHeader__nav pasa a display:contents y ambos
+            grupos se aplanan en .tmcHeader__navGroup — visualmente
+            IDÉNTICO a los 5 en una sola fila centrada de siempre (mismo
+            DOM order, mismo texto). En mobile (≤430px), .tmcHeader__nav
+            recupera su propia caja (display:flex) para que cada grupo
+            tenga un ancho independiente — la reestructuración mobile del
+            header (logo+3 arriba, 2 en su fila, botón en la suya) necesita
+            que el ancho de "3 items" no comparta track con el de "2 items",
+            algo que un solo <nav> compartido no permite (ver globals.css). */}
+        <div className="tmcHeader__navGroup">
+          <nav className="tmcHeader__nav tmcHeader__nav--primary" aria-label="TMC — navegación corporativa">
+            {headerOverlays.slice(0, 3).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="tmcHeader__navItem"
+                aria-expanded={openId === item.id}
+                onClick={() => setOpenId(openId === item.id ? null : item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+          <nav className="tmcHeader__nav tmcHeader__nav--secondary" aria-label="TMC — navegación corporativa (continuación)">
+            {headerOverlays.slice(3).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="tmcHeader__navItem"
+                aria-expanded={openId === item.id}
+                onClick={() => setOpenId(openId === item.id ? null : item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
         <button
           type="button"
           className="tmcHeader__inquiry"

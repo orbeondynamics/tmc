@@ -145,13 +145,23 @@ body:has(.worldRoot) .tmcFallback {
   align-items: center;
   justify-content: center;
 }
-.tmcHeader__nav {
+/* .tmcHeader__navGroup hace el rol de flex-row centrado que antes tenía
+   .tmcHeader__nav directamente — ahora hay 2 <nav> (primary/secondary,
+   ver Header.tsx) para poder darles ancho independiente en mobile. En
+   desktop, .tmcHeader__nav es display:contents (no genera caja propia),
+   así que sus botones se aplanan como hijos directos de navGroup — mismo
+   resultado visual exacto que antes (una sola fila centrada de 5, mismos
+   separadores, porque siguen siendo hermanos DOM adyacentes en orden). */
+.tmcHeader__navGroup {
   pointer-events: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: clamp(14px, 2.2vw, 30px);
   flex-wrap: wrap;
+}
+.tmcHeader__nav {
+  display: contents;
 }
 .tmcHeader__navItem {
   position: relative;
@@ -174,6 +184,24 @@ body:has(.worldRoot) .tmcFallback {
 }
 /* Separador vertical delgado entre items (no antes del primero). */
 .tmcHeader__navItem + .tmcHeader__navItem::before {
+  content: "";
+  position: absolute;
+  left: calc(clamp(14px, 2.2vw, 30px) / -2);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 12px;
+  background: var(--hairline);
+}
+/* El item 4 ("OUR VALUES") ya no es hermano DOM adyacente del item 3 (ver
+   Header.tsx: ahora hay 2 <nav>, primary con los primeros 3 y secondary
+   con los últimos 2, para poder darles ancho independiente en mobile) —
+   el selector de arriba no lo alcanza. En desktop ambos <nav> son
+   display:contents y se aplanan en una sola fila visual (idéntica a
+   antes), así que este límite necesita su propio separador explícito
+   para no perderlo. Se anula en el breakpoint mobile (ver más abajo),
+   donde cada <nav> es una fila propia y no corresponde un separador ahí. */
+.tmcHeader__nav--secondary > .tmcHeader__navItem:first-child::before {
   content: "";
   position: absolute;
   left: calc(clamp(14px, 2.2vw, 30px) / -2);
@@ -828,7 +856,10 @@ body:has(.worldRoot) .tmcFallback {
    acotado solo al nav — reutiliza los mismos valores compactos que ya usa
    el breakpoint de 720px, sin tocar footer/hotspots/logo. */
 @media (max-width: 800px) {
-  .tmcHeader__nav {
+  /* .tmcHeader__nav es display:contents (ver arriba) — gap no tiene efecto
+     ahí; el gap real vive en .tmcHeader__navGroup, que es quien genera la
+     caja flex. */
+  .tmcHeader__navGroup {
     gap: 10px;
   }
   .tmcHeader__navItem {
@@ -837,7 +868,7 @@ body:has(.worldRoot) .tmcFallback {
 }
 
 @media (max-width: 720px) {
-  .tmcHeader__nav {
+  .tmcHeader__navGroup {
     gap: 10px;
   }
   .tmcHeader__navItem {
@@ -856,6 +887,73 @@ body:has(.worldRoot) .tmcFallback {
      práctica) y .unitLogo__tagline ya no se oculta — el tagline de las 4
      unidades debe ser legible en cualquier ancho, incluido mobile (spec del
      dueño del proyecto, sistema de composición de 3 valores). */
+}
+
+/* Reestructuración del header mobile (≤430px, mismo breakpoint que ya usa
+   headerBottomFor() para "header mobile"): con los 5 items + el botón en
+   una sola fila que envuelve, el header medía ~225px de alto, comiéndose
+   el presupuesto vertical para el logo/insignias del home. Pura
+   redistribución (Opción B, aprobada): mismo texto/orden/tamaño de fuente,
+   solo agrupación — fila 1 logo+3 items, fila 2 los otros 2 (a la
+   derecha), fila 3 el botón (a la derecha). Medido: ancho mínimo real de
+   los 5 items + logo (443.9px) YA excede 430px sin ningún gap/padding —
+   por eso no puede ser "3 en fila + 2 compartiendo columna con el botón de
+   145.5px" (probado, no cabe en ninguno de los 3 anchos de validación):
+   cada fila necesita su PROPIA caja con ancho independiente, no un track
+   de grid compartido entre filas (que suma anchos aunque estén vacías en
+   otras filas) — de ahí que .tmcHeader__nav recupere su propio
+   display:flex aquí (en vez de contents) y .tmcHeader__navGroup se vuelva
+   contents (ver Header.tsx para el porqué de 2 <nav> en vez de 1). */
+@media (max-width: 430px) {
+  .tmcHeader {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto auto;
+    row-gap: 8px;
+  }
+  .tmcHeader__home {
+    grid-row: 1 / 4;
+    grid-column: 1;
+    align-self: center;
+  }
+  .tmcHeader__navGroup {
+    display: contents;
+  }
+  .tmcHeader__nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tmcHeader__nav--primary {
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: start;
+  }
+  .tmcHeader__nav--secondary {
+    grid-row: 2;
+    grid-column: 2;
+    justify-content: flex-end;
+    justify-self: end;
+  }
+  .tmcHeader__navItem {
+    white-space: nowrap;
+  }
+  /* No hace falta anular "item + item::before" entre filas: al ser 2
+     <nav> reales (primary/secondary, ver Header.tsx), el último item de
+     primary y el primero de secondary ya NO son hermanos DOM adyacentes
+     — ese selector simplemente no los alcanza. El separador EXPLÍCITO de
+     desktop (arriba, ".tmcHeader__nav--secondary > :first-child::before",
+     agregado para no perder el límite entre item 3 y 4 cuando ambos <nav>
+     se aplanan en una sola fila) sí hay que anularlo aquí — en mobile ese
+     límite es un salto de fila, no un separador visual. */
+  .tmcHeader__nav--secondary > .tmcHeader__navItem:first-child::before {
+    content: none;
+  }
+  .tmcHeader__inquiry {
+    grid-row: 3;
+    grid-column: 2;
+    justify-self: end;
+    white-space: nowrap;
+  }
 }
 
 /* ---------- Página estática de unidad (cambio de alcance mayor: /luxury,
