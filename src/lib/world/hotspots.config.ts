@@ -1,7 +1,12 @@
 // Bloque 1 (MVP) — configuración de las 4 unidades V1 (Master Handoff
 // secciones 2, 4, 18). Copy exclusivamente aprobado, sin invención.
 
-import type { HotspotQuadrant } from "./hotspotComposition";
+export interface HotspotQuadrant {
+  /** -1 = columna izquierda, +1 = columna derecha. */
+  col: -1 | 1;
+  /** -1 = fila de arriba, +1 = fila de abajo. */
+  row: -1 | 1;
+}
 
 export interface HotspotConfig {
   id: string;
@@ -13,14 +18,12 @@ export interface HotspotConfig {
   positioning: string;
   /** Mensaje/tagline aprobado (secciones 2 y 4). */
   message: string;
-  /** Cuadrante de la composición (hotspotComposition.ts, sistema de 3
-   * valores) — reemplaza al anchor [x,y,z] en unidades de mundo que usaba
-   * el sistema anterior (REDTEAM: 4 posiciones fijas empujadas
-   * individualmente para evitar choques, causa raíz de los choques con
-   * header/footer que se repitieron en cada ronda). Solo se conserva la
-   * profundidad Z (parallax) de cada anchor original — X/Y ahora se
-   * calculan en pantalla a partir del logo real + separacionHorizontal/
-   * separacionVertical, no viven más aquí. */
+  /** Cuadrante de la composición fija en CSS (ver HomeBadgeLayer.tsx —
+   * reemplaza por completo al sistema anterior de proyección 3D en vivo,
+   * REDTEAM: "cero interacción de mouse sobre objetos 3D" confirmado, así
+   * que las 4 insignias son overlay HTML puro posicionado por
+   * porcentaje/transform, sin round-trip a posición de mundo). Ya no se
+   * conserva una profundidad Z — no hay parallax 3D en las insignias. */
   quadrant: HotspotQuadrant;
 }
 
@@ -31,8 +34,7 @@ export const hotspots: HotspotConfig[] = [
     label: "TMC LUXURY",
     positioning: "PRIVATE PROPERTY MANAGEMENT",
     message: "Your property. Our responsibility.",
-    // Cuadrante superior-izquierdo. Z conservado del anchor original (-4).
-    quadrant: { col: -1, row: -1, z: -4 },
+    quadrant: { col: -1, row: -1 },
   },
   {
     id: "tmc-transport",
@@ -40,8 +42,7 @@ export const hotspots: HotspotConfig[] = [
     label: "TMC TRANSPORT",
     positioning: "PRIVATE MOBILITY",
     message: "Your destination. Our expertise.",
-    // Cuadrante superior-derecho. Z conservado del anchor original (-8).
-    quadrant: { col: 1, row: -1, z: -8 },
+    quadrant: { col: 1, row: -1 },
   },
   {
     id: "tmc-cleaners",
@@ -49,8 +50,7 @@ export const hotspots: HotspotConfig[] = [
     label: "TMC CLEANERS",
     positioning: "PRIVATE HOME & PROPERTY CARE",
     message: "Immaculate spaces for a better life.",
-    // Cuadrante inferior-izquierdo. Z conservado del anchor original (-2).
-    quadrant: { col: -1, row: 1, z: -2 },
+    quadrant: { col: -1, row: 1 },
   },
   {
     id: "tmc-project-office",
@@ -58,7 +58,6 @@ export const hotspots: HotspotConfig[] = [
     label: "TMC PROJECT OFFICE",
     positioning: "PROJECTS · INVESTMENTS · ADVISORY",
     message: "Turning opportunities into execution.",
-    // Cuadrante inferior-derecho. Z conservado del anchor original (2).
-    quadrant: { col: 1, row: 1, z: 2 },
+    quadrant: { col: 1, row: 1 },
   },
 ];

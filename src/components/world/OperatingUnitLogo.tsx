@@ -16,8 +16,12 @@
 // aprobado (hotspot.message en hotspots.config.ts), no copy nuevo. El PNG
 // oficial no se toca; el tagline es un elemento HTML aparte, no se hornea
 // en la imagen.
+//
+// Ya no recibe diameterPx ni ref (rediseño de arquitectura logo+insignias,
+// ver HomeBadgeLayer.tsx): el tamaño ahora lo fija el CSS del contenedor
+// (.homeBadge, width/height:100% aquí) — no hace falta medir/aplicar nada
+// por JS cada frame.
 
-import { forwardRef } from "react";
 import Image from "next/image";
 import { tmcAssets } from "@/config/tmcAssets";
 
@@ -28,36 +32,18 @@ interface OperatingUnitLogoProps {
   label: string;
   tagline: string;
   active?: boolean;
-  /** Diámetro inicial en píxeles CSS (primer render/SSR). El tamaño real se
-   * mantiene actualizado después vía `frameRef` (ver Hotspots.tsx) — cambia
-   * con la distancia real cámara↔logo, que varía continuamente durante el
-   * scroll, así que no puede vivir en una prop/estado de React sin
-   * re-renderizar 60 veces por segundo (mismo principio que
-   * HotspotArcs.tsx aplica a las posiciones de los arcos). */
-  diameterPx?: number;
 }
 
-export const OperatingUnitLogo = forwardRef<HTMLSpanElement, OperatingUnitLogoProps>(
-  function OperatingUnitLogo({ unitId, label, tagline, active = false, diameterPx }, frameRef) {
-    const src = tmcAssets.operatingUnitLogos[unitId as OperatingUnitId];
-    if (!src) return null;
+export function OperatingUnitLogo({ unitId, label, tagline, active = false }: OperatingUnitLogoProps) {
+  const src = tmcAssets.operatingUnitLogos[unitId as OperatingUnitId];
+  if (!src) return null;
 
-    const frameStyle = diameterPx ? { width: diameterPx, height: diameterPx } : undefined;
-
-    return (
-      <span className={`unitLogo${active ? " unitLogo--active" : ""}`}>
-        <span ref={frameRef} className="unitLogo__frame" style={frameStyle}>
-          <Image
-            src={src}
-            alt={label}
-            width={144}
-            height={144}
-            className="unitLogo__img"
-            draggable={false}
-          />
-        </span>
-        <span className="unitLogo__tagline">{tagline}</span>
+  return (
+    <span className={`unitLogo${active ? " unitLogo--active" : ""}`}>
+      <span className="unitLogo__frame">
+        <Image src={src} alt={label} width={144} height={144} className="unitLogo__img" draggable={false} />
       </span>
-    );
-  }
-);
+      <span className="unitLogo__tagline">{tagline}</span>
+    </span>
+  );
+}

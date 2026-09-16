@@ -13,13 +13,15 @@ import { Environment } from "@react-three/drei";
 import { CameraRig } from "./CameraRig";
 import { SceneLayers } from "./SceneLayers";
 import { TmcLogo } from "./TmcLogo";
-import { Hotspots } from "./Hotspots";
 
 // Cambio de alcance (páginas de unidad ya no montan el mundo 3D — ver
 // HomeWorldGate.tsx, que solo monta WorldExperience/WorldCanvas cuando
-// pathname === "/"): este Canvas ya solo existe en home, así que el aro
-// central (TmcLogo) y las 4 insignias (Hotspots) se ven siempre juntos, sin
-// necesidad de condicionar por ruta aquí.
+// pathname === "/"): este Canvas ya solo existe en home.
+// <Hotspots /> (las 4 insignias) YA NO vive aquí dentro (rediseño de
+// arquitectura: cero interacción de mouse sobre objetos 3D confirmado, así
+// que pasaron a ser overlay HTML puro fuera del Canvas — ver
+// WorldExperience.tsx y Hotspots.tsx). Solo el aro (TmcLogo) sigue siendo
+// 3D real.
 export function WorldCanvas() {
   return (
     <Canvas
@@ -35,7 +37,6 @@ export function WorldCanvas() {
         <Environment preset="sunset" environmentIntensity={0.6} />
         <SceneLayers />
         <TmcLogo />
-        <Hotspots />
       </Suspense>
       <CameraRig />
     </Canvas>

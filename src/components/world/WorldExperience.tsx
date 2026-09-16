@@ -26,6 +26,7 @@ import { useClientOnlyValue } from "@/hooks/useClientOnlyValue";
 import { track } from "@/lib/analytics/track";
 import type { SiteContent } from "@/lib/content/SiteContent";
 import { WorldCanvas } from "./WorldCanvas";
+import { Hotspots } from "./Hotspots";
 import { IntroSequence } from "./IntroSequence";
 import { Header } from "@/components/ui/Header";
 import { Footer } from "@/components/ui/Footer";
@@ -144,6 +145,10 @@ function ExperienceInner({ siteContent }: { siteContent: SiteContent }) {
       <ScrollDriver />
       <div className="worldFixedLayer">
         <WorldCanvas />
+        {/* Hotspots (las 4 insignias) vive FUERA del Canvas a propósito
+            (rediseño de arquitectura, ver Hotspots.tsx): overlay HTML puro
+            posicionado por CSS, no un <group>/<Html> 3D. */}
+        <Hotspots />
         <Header overlays={siteContent.headerOverlays} />
         <HomeContentPanel
           sections={siteContent.homeNarrativeSections}
