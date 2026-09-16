@@ -15,12 +15,17 @@ import { waypoints } from "@/lib/world/waypoints";
 import { useWorld } from "@/lib/world/WorldContext";
 import { navigateToWaypoint } from "@/lib/world/navigateToWaypoint";
 import { useAspectCorrectionFactor } from "@/lib/world/useAspectCorrection";
-import { getCorrectedHotspotAnchor } from "@/lib/world/correctedHotspotAnchor";
+import { computeComposition, getHotspotWorldPosition } from "@/lib/world/hotspotComposition";
 import { useHeaderFooterElements } from "@/lib/world/useHeaderFooterBounds";
 import { getInitialBadgeDiameterPx, getBadgeDiameterPx } from "@/lib/world/badgeDiameter";
 import { track } from "@/lib/analytics/track";
 import { LOGO_POSITION } from "./TmcLogo";
 import { OperatingUnitLogo } from "./OperatingUnitLogo";
+
+/** Debe coincidir con el `margin-top` de `.unitLogo__tagline` en
+ * globals.css — la separación real entre el borde inferior del aro y el
+ * tagline, medida en vivo por lo demás (ver taglineClearancePx). */
+const TAGLINE_GAP_PX = 6;
 
 export function Hotspots() {
   const router = useRouter();
@@ -38,7 +43,10 @@ export function Hotspots() {
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const groupRefs = useRef<Record<string, THREE.Group | null>>({});
   const logoWorldPos = useRef(new THREE.Vector3(...LOGO_POSITION));
-  const anchorScratch = useRef(new THREE.Vector3());
+  const compositionScratch = useRef(new THREE.Vector3());
+  const unprojectScratchNear = useRef(new THREE.Vector3());
+  const unprojectScratchFar = useRef(new THREE.Vector3());
+  const warnedInsufficientSpace = useRef(false);
   const { headerRef, footerRef } = useHeaderFooterElements();
 
   // Diámetro del aro proyectado a píxeles de pantalla en el waypoint hero —
@@ -58,44 +66,82 @@ export function Hotspots() {
     // estado de React, necesario porque la distancia cambia continuamente
     // durante el scroll, no solo entre waypoints).
     const diameterPx = getBadgeDiameterPx(initialBadgeDiameterPx, camera, logoWorldPos.current);
+    // Alto real del tagline (el mayor de las 4) medido en vivo cada frame —
+    // el tagline vive fuera del flujo, justo debajo del aro (ver
+    // globals.css .unitLogo__tagline y el comentario de taglineClearancePx
+    // en hotspotComposition.ts): un texto que envuelve a más líneas en
+    // ciertos anchos (ej. "Turning opportunities into execution.") no debe
+    // poder quedar tapado por el footer, así que el margen contra el
+    // footer se mide desde el borde inferior del tagline más largo, no
+    // desde el borde del aro. `nextElementSibling` es el tagline: son
+    // hermanos directos dentro de .unitLogo (ver OperatingUnitLogo.tsx).
+    let maxTaglineHeightPx = 0;
     for (const el of Object.values(frameRefs.current)) {
-      if (el) {
-        el.style.width = `${diameterPx}px`;
-        el.style.height = `${diameterPx}px`;
+      if (!el) continue;
+      el.style.width = `${diameterPx}px`;
+      el.style.height = `${diameterPx}px`;
+      const tagline = el.nextElementSibling as HTMLElement | null;
+      if (tagline) {
+        maxTaglineHeightPx = Math.max(maxTaglineHeightPx, tagline.getBoundingClientRect().height);
       }
     }
+    const taglineClearancePx = maxTaglineHeightPx > 0 ? maxTaglineHeightPx + TAGLINE_GAP_PX : 0;
 
-    // Reposiciona cada insignia si su anchor fijo se proyecta dentro de la
-    // franja real del header/footer (ver correctedHotspotAnchor.ts) — igual
-    // que el tamaño arriba, depende de la cámara real de cada frame, no
-    // puede vivir en una prop/estado de React. markerRadiusPx usa el
-    // diámetro real de ESTE frame (arriba), no el inicial — la insignia
-    // completa (no solo su centro) es lo que no debe invadir el header/footer.
+    // Composición de 3 valores (hotspotComposition.ts, reemplaza por
+    // completo al sistema anterior de empuje individual): se calcula UNA
+    // vez por frame (origen = proyección real del logo + las 2
+    // separaciones), no una vez por insignia — las 4 comparten el mismo
+    // origen y las mismas separaciones por diseño. markerRadiusPx usa el
+    // diámetro real de ESTE frame (arriba), no el inicial.
     const headerBottomPx = headerRef.current?.getBoundingClientRect().bottom ?? 0;
     const footerTopPx = footerRef.current?.getBoundingClientRect().top ?? size.height;
+    const markerRadiusPx = diameterPx / 2;
+    const composition = computeComposition({
+      camera,
+      logoPosition: LOGO_POSITION,
+      viewportWidth: size.width,
+      viewportHeight: size.height,
+      headerBottomPx,
+      footerTopPx,
+      markerRadiusPx,
+      taglineClearancePx,
+      scratch: compositionScratch.current,
+      scratchNear: unprojectScratchNear.current,
+      scratchFar: unprojectScratchFar.current,
+    });
+
+    if (composition.insufficientVerticalSpace && !warnedInsufficientSpace.current) {
+      // Caso extremo genuino (viewport demasiado bajo para header+conjunto+
+      // footer sin comprimir sin importar la separación usada) — se reporta
+      // explícitamente en vez de forzar una composición con insignias
+      // encimadas entre sí. Validado (script de la sesión, 31 combinaciones):
+      // aparece únicamente en mobile landscape de poca altura y en ventanas
+      // de escritorio muy bajas (~500px de alto o menos) — reportado al
+      // dueño del proyecto como caso extremo, no corregido ad hoc.
+      warnedInsufficientSpace.current = true;
+      console.warn(
+        `[Hotspots] Espacio vertical insuficiente en ${size.width}x${size.height} — separacionVertical calculada no alcanza para separar filas sin overlap. Reportar como caso extremo.`
+      );
+    }
+
     for (const hotspot of hotspots) {
       const group = groupRefs.current[hotspot.id];
       if (!group) continue;
-      const { position, opacity } = getCorrectedHotspotAnchor({
-        anchor: hotspot.anchor,
-        aspectFactor,
-        logoY: LOGO_POSITION[1],
+      const { position } = getHotspotWorldPosition(
+        composition,
+        hotspot.quadrant,
         camera,
-        viewportWidth: size.width,
-        viewportHeight: size.height,
-        headerBottomPx,
-        footerTopPx,
-        markerRadiusPx: diameterPx / 2,
-        scratch: anchorScratch.current,
-      });
+        size.width,
+        size.height,
+        unprojectScratchNear.current,
+        unprojectScratchFar.current
+      );
       group.position.set(...position);
-      // Residual tras el piso anti-colisión-con-el-aro (ver
-      // correctedHotspotAnchor.ts): la insignia no puede alejarse más del
-      // header/footer sin encimarse con el logo, así que se atenúa en vez de
-      // quedar a opacidad completa sobre el header/footer — solo ocurre en
-      // ese tramo puntual, el resto del tiempo opacity=1.
+      // Ya no hace falta atenuar por opacidad: la composición garantiza,
+      // por construcción, que ninguna insignia invade header/footer/aro —
+      // no hay residual que disimular (ver hotspotComposition.ts).
       const button = buttonRefs.current[hotspot.id];
-      if (button) button.style.opacity = String(opacity);
+      if (button) button.style.opacity = "1";
     }
   });
 
@@ -105,20 +151,18 @@ export function Hotspots() {
         const waypoint = waypoints.find((w) => w.id === hotspot.id);
         if (!waypoint) return null;
         const isActive = activeWaypointId === hotspot.id;
-        // Posición inicial (primer paint/SSR) sin compresión — useFrame la
-        // corrige cada frame contra la cámara real en cuanto arranca el loop.
-        const initialAnchor: [number, number, number] = [
-          hotspot.anchor[0] * aspectFactor,
-          hotspot.anchor[1],
-          hotspot.anchor[2],
-        ];
+        // Posición inicial (primer paint/SSR): arranca en el logo mismo —
+        // useFrame calcula la posición real (composición de 3 valores) en
+        // cuanto arranca el loop de render, antes de que el usuario llegue
+        // a verlo. Ya no depende de un anchor de mundo fijo (ver
+        // hotspotComposition.ts).
         return (
           <group
             key={hotspot.id}
             ref={(el) => {
               groupRefs.current[hotspot.id] = el;
             }}
-            position={initialAnchor}
+            position={LOGO_POSITION}
           >
             <Html center occlude={false} zIndexRange={[10, 0]}>
               <button

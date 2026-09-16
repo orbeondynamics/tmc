@@ -256,7 +256,10 @@ body:has(.worldRoot) .tmcFallback {
 }
 .tmcOverlay__title {
   font-family: var(--font-display), serif;
-  font-size: clamp(24px, 4vw, 34px);
+  /* Subido de clamp(24px,4vw,34px) — reportado como "demasiado pequeño" en
+     los 5 overlays del menú (Our Purpose/Vision/Promise/Values/Clients,
+     todos comparten este mismo componente Overlay.tsx). */
+  font-size: clamp(30px, 5vw, 42px);
   color: var(--ink);
   margin-bottom: 14px;
 }
@@ -621,11 +624,21 @@ body:has(.worldRoot) .tmcFallback {
    se resuelve en el contenedor (glow + escala); el <img> nunca lleva filter
    ni recoloreo. ---------- */
 .unitLogo {
-  display: flex;
-  flex-direction: column;
+  /* position: relative + tagline en position: absolute (abajo) a propósito:
+     Html center (drei) centra la caja de ESTE elemento sobre el punto de
+     pantalla calculado por hotspotComposition.ts. Si el tagline formara
+     parte del flujo (flex-column, como antes), un tagline que envuelve a
+     una línea más que sus vecinos (bug real encontrado en validación:
+     "Turning opportunities into execution." en TMC Project Office envuelve
+     a 3 líneas vs. 2 en las otras 3 insignias a 1440×900) agranda la caja
+     centrada y desplaza el ARO varios px respecto a las insignias de su
+     misma fila — rompe la simetría exigida aunque la composición matemática
+     sea exacta. Sacando el tagline del flujo, la caja centrada es
+     exactamente el aro, sin importar cuántas líneas ocupe el texto. */
+  position: relative;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
 }
 .unitLogo__frame {
   display: flex;
@@ -644,7 +657,20 @@ body:has(.worldRoot) .tmcFallback {
   pointer-events: none;
 }
 .unitLogo__tagline {
-  max-width: 16ch;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  width: max-content;
+  /* 20ch (no 16ch): a 16ch, "Turning opportunities into execution." (TMC
+     Project Office) envuelve a 3 líneas por la palabra larga
+     "opportunities", mientras las otras 3 taglines envuelven a 2 — un
+     bloque más alto que sus vecinos que le resta espacio vertical real al
+     conjunto (afecta el margen contra el footer en anchos/altos ajustados).
+     A 20ch las 4 taglines envuelven a 2 líneas por igual, sin acortar
+     ningún texto aprobado. */
+  max-width: 20ch;
   text-align: center;
   font-size: 12px;
   line-height: 1.35;
@@ -682,6 +708,12 @@ body:has(.worldRoot) .tmcFallback {
      un piso de opacidad baja en vez de 0 da algo de fondo real detrás del
      text-shadow, sin volver la franja superior un corte sólido. */
   background: linear-gradient(to top, rgba(6, 11, 24, 0.92), rgba(6, 11, 24, 0.25));
+  /* Explícito (no solo heredado): en las páginas de unidad, el ancestro
+     .staticUnitPage__chrome ahora es pointer-events:none (fix Tema 2) — sin
+     este auto, los links/íconos del footer heredarían none y dejarían de
+     ser clicables ahí. En el mundo 3D es un no-op (el ancestro ya era auto
+     por defecto), así que no cambia nada del comportamiento ya aprobado. */
+  pointer-events: auto;
 }
 .tmcFooter__block {
   display: flex;
@@ -818,13 +850,12 @@ body:has(.worldRoot) .tmcFallback {
   .tmcFooter__hint {
     display: none;
   }
-  .unitLogo__frame {
-    width: 52px;
-    height: 52px;
-  }
-  .unitLogo__tagline {
-    display: none;
-  }
+  /* .unitLogo__frame ya no tiene un ancho/alto fijo aquí (código muerto:
+     Hotspots.tsx siempre fija width/height inline vía JS cada frame —
+     badgeDiameter.ts —, así que esta regla CSS nunca se aplicaba en la
+     práctica) y .unitLogo__tagline ya no se oculta — el tagline de las 4
+     unidades debe ser legible en cualquier ancho, incluido mobile (spec del
+     dueño del proyecto, sistema de composición de 3 valores). */
 }
 
 /* ---------- Página estática de unidad (cambio de alcance mayor: /luxury,
@@ -853,6 +884,18 @@ body:has(.worldRoot) .tmcFallback {
   position: fixed;
   inset: 0;
   z-index: 20;
+  /* Bug real de validación (Tema 2): sin esto, este div (inset:0, encima
+     del panel por z-index) capturaba TODO el wheel/mousedown sobre el área
+     del panel — document.elementFromPoint() en el centro del panel
+     devolvía este div, nunca .staticUnitPanel__scroll ni su scrollbar, así
+     que ni la rueda del mouse ni arrastrar la barra visible lo movían. En
+     el mundo 3D (.worldFixedLayer, mismo patrón de wrapper fixed inset:0)
+     esto nunca se notó porque nada debajo necesita recibir wheel/mousedown
+     directamente (Lenis captura el scroll a nivel de documento). .tmcHeader
+     ya usa pointer-events:none + auto en sus hijos clicables (mismo
+     patrón); .tmcFooter recibe pointer-events:auto explícito abajo para
+     seguir funcionando aquí igual que en el mundo 3D. */
+  pointer-events: none;
 }
 .staticUnitPanel {
   position: fixed;
