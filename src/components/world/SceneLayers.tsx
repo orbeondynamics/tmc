@@ -108,6 +108,26 @@ const LAYERS: LayerDef[] = [
 
 function Layer({ src, z, keepInViewU }: LayerDef) {
   const texture = useTexture(src);
+  // Hallazgo 7 (color más claro que el original, confirmado comparando
+  // contra master-background.webp — sí existe un master real, no fue
+  // necesario reportar su ausencia): causa raíz real, no un ajuste de
+  // tono — THREE.TextureLoader (y useTexture de drei, que lo usa tal
+  // cual, sin tocar colorSpace) deja Texture.colorSpace en su default de
+  // constructor, NoColorSpace (verificado en node_modules/three/src/
+  // textures/Texture.js), tratando estos 6 PNG/WEBP fotográficos como
+  // datos YA lineales. El renderer les aplica igual la codificación sRGB
+  // de salida — un "doble gamma" que aclara y desatura sistemáticamente
+  // cualquier textura de color a la que le falte esta línea (bug clásico
+  // de Three.js, no exclusivo de este proyecto). meshBasicMaterial ya usa
+  // toneMapped={false} más abajo (correcto, evita el tone-mapping ACES
+  // del renderer), pero eso no cubre color space — son 2 pasos distintos
+  // del pipeline. Fix real: declarar explícitamente que es una textura de
+  // color, no un mapa de datos.
+  /* eslint-disable-next-line react-hooks/immutability -- texture (three.js) es un
+     objeto imperativo del grafo de escena de R3F, no estado de React; asignar
+     colorSpace tras cargarla es el patrón oficial de la librería (mismo criterio ya
+     aplicado a `camera` en CameraRig.tsx). */
+  texture.colorSpace = THREE.SRGBColorSpace;
   const { camera, size } = useThree();
   const meshRef = useRef<THREE.Mesh>(null);
   const forward = useRef(new THREE.Vector3());
