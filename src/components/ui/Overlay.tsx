@@ -71,6 +71,13 @@ export function Overlay({
         aria-modal="true"
         aria-label={section.label}
       >
+        {/* Hallazgo 17/18 (Grupo C): antes el botón de cierre vivía DENTRO
+            del mismo contenedor con overflow-y:auto que el contenido — al
+            scrollear un overlay largo, el control para cerrar/volver
+            desaparecía de la vista. Ahora es hermano del área scrolleable,
+            no su hijo, así que .tmcOverlay__panel ya no scrollea (el
+            scroll vive en .tmcOverlay__scroll) y el botón queda fijo
+            arriba a la izquierda siempre, con o sin scroll. */}
         <button
           ref={closeRef}
           type="button"
@@ -80,23 +87,25 @@ export function Overlay({
         >
           ×
         </button>
-        <p className="tmcOverlay__eyebrow">{section.label}</p>
-        <h2 className="tmcOverlay__title">{section.framing}</h2>
-        {section.body.map((paragraph) => (
-          <p key={paragraph} className="tmcOverlay__body">
-            {paragraph}
-          </p>
-        ))}
-        {showSocialChannels && (
-          <ul className="tmcOverlay__channels">
-            {socialChannels.map((channel) => (
-              <li key={channel.id} className="tmcOverlay__channel">
-                <SocialIcon channelId={channel.id} />
-                {channel.label}
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="tmcOverlay__scroll">
+          <p className="tmcOverlay__eyebrow">{section.label}</p>
+          <h2 className="tmcOverlay__title">{section.framing}</h2>
+          {section.body.map((paragraph) => (
+            <p key={paragraph} className="tmcOverlay__body">
+              {paragraph}
+            </p>
+          ))}
+          {showSocialChannels && (
+            <ul className="tmcOverlay__channels">
+              {socialChannels.map((channel) => (
+                <li key={channel.id} className="tmcOverlay__channel">
+                  <SocialIcon channelId={channel.id} />
+                  {channel.label}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );

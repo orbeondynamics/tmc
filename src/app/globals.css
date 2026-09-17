@@ -265,8 +265,14 @@ body:has(.worldRoot) .tmcFallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(6, 11, 24, 0.72);
-  backdrop-filter: blur(6px);
+  /* Hallazgo 19 (Grupo C): oscurecimiento reducido (0.72→0.42 dim, 6px→4px
+     blur) para que el mundo 3D detrás siga siendo reconocible en vez de
+     leer como un fondo negro genérico — el texto compensa con
+     text-shadow explícito (ver .tmcOverlay__title/__body/__eyebrow abajo,
+     mismo criterio ya usado en header/tagline) en vez de depender de un
+     backdrop casi opaco para tener contraste. */
+  background: rgba(6, 11, 24, 0.42);
+  backdrop-filter: blur(4px);
   padding: 24px;
 }
 /* Prompt maestro sección 6.2/6.3 (mismo criterio ya aplicado a .unitPanel):
@@ -278,16 +284,24 @@ body:has(.worldRoot) .tmcFallback {
    máscara en los 4 bordes para que el panel se disuelva hacia el fondo
    desenfocado en vez de cortar en seco como un rectángulo. El fondo de
    respaldo (backdrop dim + blur) se mantiene — es función de diálogo
-   modal, no el defecto "dashboard" que se corrige aquí. */
+   modal, no el defecto "dashboard" que se corrige aquí.
+   Hallazgo 17/18 (Grupo C): .tmcOverlay__panel ya NO scrollea — es el
+   contenedor ESTÁTICO que agrupa el control persistente (__close) y el
+   área scrolleable (__scroll, ver abajo) como hermanos, no como
+   padre/hijo del mismo overflow. display:flex + max-height acotan el
+   alto total; __scroll toma el espacio restante y es quien scrollea. */
 .tmcOverlay__panel {
   position: relative;
   max-width: 480px;
   width: 100%;
   max-height: calc(100vh - 48px);
-  overflow-y: auto;
-  background: linear-gradient(180deg, rgba(11, 24, 50, 0.95) 0%, rgba(11, 24, 50, 0.88) 100%);
+  display: flex;
+  flex-direction: column;
+  /* Hallazgo 19: mismo criterio que el backdrop — opacidad reducida
+     (0.95/0.88 → 0.74/0.62) para que el mundo detrás siga siendo
+     reconocible a través del panel, no solo alrededor de él. */
+  background: linear-gradient(180deg, rgba(11, 24, 50, 0.74) 0%, rgba(11, 24, 50, 0.62) 100%);
   border-top: 1px solid var(--hairline);
-  padding: 40px 36px;
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0%,
@@ -300,16 +314,29 @@ body:has(.worldRoot) .tmcFallback {
 .tmcOverlay__close {
   position: absolute;
   top: 14px;
-  right: 16px;
+  /* Hallazgo 17: arriba a la IZQUIERDA (spec explícita del dueño del
+     proyecto) — antes arriba a la derecha. */
+  left: 16px;
+  z-index: 1;
   font-size: 22px;
   color: var(--gold-light);
   line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+.tmcOverlay__scroll {
+  overflow-y: auto;
+  /* padding-top mayor que los otros 3 lados: dele espacio real al botón
+     de cierre (ahora arriba-izquierda, mismo lado que el eyebrow/título)
+     para que nunca se superponga con el texto, en vez de un ajuste de
+     posición suelto. */
+  padding: 52px 36px 40px;
 }
 .tmcOverlay__eyebrow {
   font-size: 11px;
   letter-spacing: 0.16em;
   color: var(--gold);
   margin-bottom: 12px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 1px 8px rgba(0, 0, 0, 0.6);
 }
 .tmcOverlay__title {
   font-family: var(--font-display), serif;
@@ -319,11 +346,13 @@ body:has(.worldRoot) .tmcFallback {
   font-size: clamp(30px, 5vw, 42px);
   color: var(--ink);
   margin-bottom: 14px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 1px 8px rgba(0, 0, 0, 0.6);
 }
 .tmcOverlay__body {
   color: var(--ink);
   opacity: 0.85;
   line-height: 1.6;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 .tmcOverlay__body + .tmcOverlay__body {
   margin-top: 10px;
