@@ -675,17 +675,15 @@ body:has(.worldRoot) .tmcFallback {
    interacción real es scroll de cámara, y las 4 insignias siempre fueron
    overlay HTML (drei <Html>) posicionado por proyección 2D de un <group>.
    Eso habilita tratar todo como layout de pantalla puro: composición FIJA
-   (origen del logo + 4 separaciones, en % relativos entre sí, nunca
-   recalculados individualmente) escalada por un solo factor.
-   El origen (dónde proyecta LOGO_POSITION bajo la cámara "hero", único
-   estado de reposo del home) es una CONSTANTE matemática, no algo que haya
-   que medir cada frame: verificado con three.js (mismo camera.project() de
-   siempre) en 10 aspect ratios distintos — x=50%, y=33.3255% del viewport,
-   SIEMPRE, para cualquier ancho/alto, porque el logo está exactamente en
-   el eje óptico horizontal de la cámara (x=0 en ambos) y el FOV vertical
-   fijo no depende del aspect ratio. De ahí que no haga falta recalcular
-   nada por frame — es la razón de fondo por la que el sistema anterior
-   (con su round-trip pantalla→mundo→pantalla) nunca hacía falta. */
+   (origen + 4 separaciones, en % relativos entre sí, nunca recalculados
+   individualmente) escalada por un solo factor.
+   Origen = centro EXACTO del viewport (x=50%, y=50%) — spec explícita del
+   dueño del proyecto: "centro del hub" se define como centro geométrico
+   de pantalla, no como la proyección natural de LOGO_POSITION bajo la
+   cámara "hero" (que da y=33.3255%, verificado con three.js — valor
+   usado en la versión anterior de este sistema). Es una CONSTANTE de
+   layout, no algo que se mida cada frame — las 4 insignias se posicionan
+   relativas a este origen fijo, nunca independientemente. */
 .homeBadgeLayer {
   position: fixed;
   inset: 0;
@@ -700,7 +698,7 @@ body:has(.worldRoot) .tmcFallback {
 .homeBadge {
   position: absolute;
   left: 50%;
-  top: 33.3255%;
+  top: 50%;
   width: calc(var(--hb-scale) * 120px);
   height: calc(var(--hb-scale) * 120px);
   pointer-events: auto;
