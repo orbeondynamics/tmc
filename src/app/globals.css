@@ -724,38 +724,58 @@ body:has(.worldRoot) .tmcFallback {
      número sin unidad, usable directo en los tamaños/offsets de abajo. */
   --hb-scale: clamp(0.35, calc(min(100vw, 100vh) / 1000px), 1.3);
 }
+/* Ajuste de distribución/tamaño del Hub (aprobado por el equipo): D =
+   diámetro ANTERIOR del logo a escala 1 = 120px (constante de referencia,
+   no cambia con este ajuste, solo se usa como unidad de medida para las
+   demás distancias, igual que ya hacía el sistema con 140px/90px). Nuevo
+   diámetro = 1.5×D = 180px. Separación horizontal = 3×D = 360px medida
+   centro a centro desde el centro del aro (antes 140px). Desplazamiento
+   vertical = 1×D = 120px hacia arriba aplicado a las 4 insignias por igual
+   (antes ±90px simétrico arriba/abajo) — el TMC/aro NO se mueve, sigue en
+   50%/50% (WorldCanvas.tsx, HERO_RING_POSITION). */
 .homeBadge {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: calc(var(--hb-scale) * 120px);
-  height: calc(var(--hb-scale) * 120px);
+  width: calc(var(--hb-scale) * 180px);
+  height: calc(var(--hb-scale) * 180px);
   pointer-events: auto;
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
 }
-/* Separaciones de referencia (a escala 1): 140px horizontal, 90px
-   vertical — calibradas contra el presupuesto vertical real más ajustado
-   de los 3 anchos mobile de validación (375×667: ~59px entre el logo y el
-   header ya con el header reestructurado a 3 filas). 4 selectores
-   combinados (no reglas separadas por eje — "transform" no es aditivo
-   entre clases, cada elemento necesita su valor final completo en una
-   sola declaración) dan las 4 esquinas alrededor del origen fijo, sin
-   desplazamiento de bloque dinámico (spec del dueño del proyecto: nunca
-   otra variable nueva de posicionamiento). */
+/* Separación vertical entre filas — corrección de un hueco real en la spec
+   original (confirmada por el equipo): al pasar a 1.5×D el hueco heredado
+   de 180px (±90 simétrico) dejaba el borde inferior de la insignia
+   superior exactamente tangente al borde superior de la inferior, y el
+   tagline (medido real en el DOM a --hb-scale=1: 32.375px de alto en sus 2
+   líneas + 6px de margen = 38.375px) invadía el círculo inferior. Nuevo
+   hueco G entre centros de fila (antes del desplazamiento de grupo):
+   borde inferior de la insignia superior = -G/2 + 90; debe cumplir
+   G/2 - 90 >= -G/2 + 90 + 38.375 → G >= 218.375px (mínimo exacto, margen
+   0). Se usa G = 220px (redondeo al entero superior más cercano, deja
+   1.625px de margen real contra redondeo subpíxel — no es un valor
+   inventado). Reparto simétrico previo al shift: ±110px. Sobre esa
+   distribución ya corregida se aplica el desplazamiento de grupo de 1×D
+   (120px) hacia arriba, ya aprobado (ver más abajo): fila superior
+   110+120=230px arriba del centro; fila inferior 120-110=10px arriba del
+   centro (antes de este ajuste de hueco, ese mismo shift daba -30, que
+   causaba el overlap; con G=220 en vez de 180 el resultado es -10, con el
+   margen de 1.625px ya incluido). El TMC/aro NO se mueve, sigue en
+   50%/50% (WorldCanvas.tsx, HERO_RING_POSITION); separación aro-insignias
+   (3×D horizontal) ya validada, sin tocar. */
 .homeBadge--left.homeBadge--top {
-  transform: translate(calc(-50% - var(--hb-scale) * 140px), calc(-50% - var(--hb-scale) * 90px));
+  transform: translate(calc(-50% - var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 230px));
 }
 .homeBadge--right.homeBadge--top {
-  transform: translate(calc(-50% + var(--hb-scale) * 140px), calc(-50% - var(--hb-scale) * 90px));
+  transform: translate(calc(-50% + var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 230px));
 }
 .homeBadge--left.homeBadge--bottom {
-  transform: translate(calc(-50% - var(--hb-scale) * 140px), calc(-50% + var(--hb-scale) * 90px));
+  transform: translate(calc(-50% - var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 10px));
 }
 .homeBadge--right.homeBadge--bottom {
-  transform: translate(calc(-50% + var(--hb-scale) * 140px), calc(-50% + var(--hb-scale) * 90px));
+  transform: translate(calc(-50% + var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 10px));
 }
 
 /* ---------- Logo oficial de operating unit (Master Handoff sección 11,

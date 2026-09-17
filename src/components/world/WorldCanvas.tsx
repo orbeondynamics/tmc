@@ -22,6 +22,34 @@ import { TmcLogo } from "./TmcLogo";
 // que pasaron a ser overlay HTML puro fuera del Canvas — ver
 // WorldExperience.tsx y Hotspots.tsx). Solo el aro (TmcLogo) sigue siendo
 // 3D real.
+//
+// HERO_RING_POSITION (Grupo A, hallazgo del aro desalineado del centro del
+// hub): posición 3D ESTÁTICA y determinista, aprobada explícitamente por el
+// dueño del proyecto — NO es LOGO_POSITION (esa constante de TmcLogo.tsx
+// sigue CERRADA, intacta, sin tocar) sino el valor que se le pasa a
+// TmcLogo vía su prop `position` en este caso de uso específico (home).
+// Cálculo: LOGO_POSITION=[0,7,2] no cae sobre el eje óptico de la cámara
+// "hero" (position=[0,6,62], target=[0,-2,-10]) — proyecta a y=33.3%, no
+// al 50% pedido. Cualquier punto SOBRE ese eje óptico proyecta al centro
+// exacto por construcción geométrica (es una recta, no requiere mover
+// cámara/FOV/target, que quedan intactos); se eligió el punto de esa
+// recta a distancia = REFERENCE_LOGO_DISTANCE (60, la misma constante que
+// ya usa TmcLogo.tsx para su compensación de escala por distancia) — la
+// única distancia que da compensación de escala neutra en hero (ratio
+// 0.9999, imperceptible). Verificado con three.js antes de implementar:
+// proyecta exacto a (50.000%, 50.000%) en 1920×1080, 1280×800 y 375×667.
+// Efecto secundario conocido y aprobado por el equipo (matemáticamente
+// inevitable: un único punto estático no puede estar sobre el eje óptico
+// de 5 cámaras distintas a la vez): en los 4 waypoints de unidad
+// (Luxury/Transport/Cleaners/Project Office) el aro se desplaza 317-490px
+// en pantalla respecto a antes — aceptado porque la navegación a la
+// página estática de la unidad es inmediata al completar el vuelo de
+// cámara (confirmado en navigateToWaypoint.ts/Hotspots.tsx: sin dwell),
+// no un estado de reposo visible. NO es tracking dinámico ni recalculado
+// por frame — un solo array estático, misma filosofía que el resto del
+// Grupo A (home CSS, cd3881e).
+const HERO_RING_POSITION: [number, number, number] = [0, -0.625892, 2.366976];
+
 export function WorldCanvas() {
   return (
     <Canvas
@@ -36,7 +64,7 @@ export function WorldCanvas() {
       <Suspense fallback={null}>
         <Environment preset="sunset" environmentIntensity={0.6} />
         <SceneLayers />
-        <TmcLogo />
+        <TmcLogo position={HERO_RING_POSITION} />
       </Suspense>
       <CameraRig />
     </Canvas>
