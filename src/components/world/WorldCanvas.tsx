@@ -12,7 +12,8 @@ import { Canvas } from "@react-three/fiber";
 import { Environment } from "@react-three/drei";
 import { CameraRig } from "./CameraRig";
 import { SceneLayers } from "./SceneLayers";
-import { TmcLogo } from "./TmcLogo";
+import { TmcLogo, LOGO_POSITION } from "./TmcLogo";
+import { useWorld } from "@/lib/world/WorldContext";
 
 // Cambio de alcance (páginas de unidad ya no montan el mundo 3D — ver
 // HomeWorldGate.tsx, que solo monta WorldExperience/WorldCanvas cuando
@@ -48,9 +49,23 @@ import { TmcLogo } from "./TmcLogo";
 // no un estado de reposo visible. NO es tracking dinámico ni recalculado
 // por frame — un solo array estático, misma filosofía que el resto del
 // Grupo A (home CSS, cd3881e).
+//
+// Corrección de regresión (tarea "análisis técnico — aro en waypoints",
+// aprobada por el equipo con evidencia empírica vía CDP screencast, sin
+// pop/flicker perceptible): HERO_RING_POSITION nunca debió aplicarse fuera
+// de Hero — antes de esta constante, el aro SIEMPRE estuvo en LOGO_POSITION
+// (confirmado con git log: ese valor nunca cambió) en los 4 waypoints, por
+// ser el mismo objeto 3D persistente visto desde distintos ángulos de
+// cámara. Se restaura ese comportamiento original ahí, conmutando por
+// activeWaypointId — el mismo valor que Hotspots.tsx ya escribe, en el
+// mismo tick síncrono que router.push, al completar el vuelo (sin dwell).
+// Dos posiciones fijas, no tracking dinámico ni interpolación por frame.
 const HERO_RING_POSITION: [number, number, number] = [0, -0.625892, 2.366976];
 
 export function WorldCanvas() {
+  const { activeWaypointId } = useWorld();
+  const ringPosition = activeWaypointId === "hero" ? HERO_RING_POSITION : LOGO_POSITION;
+
   return (
     <Canvas
       className="worldCanvas"
@@ -64,7 +79,7 @@ export function WorldCanvas() {
       <Suspense fallback={null}>
         <Environment preset="sunset" environmentIntensity={0.6} />
         <SceneLayers />
-        <TmcLogo position={HERO_RING_POSITION} />
+        <TmcLogo position={ringPosition} />
       </Suspense>
       <CameraRig />
     </Canvas>
