@@ -745,37 +745,31 @@ body:has(.worldRoot) .tmcFallback {
   padding: 0;
   cursor: pointer;
 }
-/* Separación vertical entre filas — corrección de un hueco real en la spec
-   original (confirmada por el equipo): al pasar a 1.5×D el hueco heredado
-   de 180px (±90 simétrico) dejaba el borde inferior de la insignia
-   superior exactamente tangente al borde superior de la inferior, y el
-   tagline (medido real en el DOM a --hb-scale=1: 32.375px de alto en sus 2
-   líneas + 6px de margen = 38.375px) invadía el círculo inferior. Nuevo
-   hueco G entre centros de fila (antes del desplazamiento de grupo):
-   borde inferior de la insignia superior = -G/2 + 90; debe cumplir
-   G/2 - 90 >= -G/2 + 90 + 38.375 → G >= 218.375px (mínimo exacto, margen
-   0). Se usa G = 220px (redondeo al entero superior más cercano, deja
-   1.625px de margen real contra redondeo subpíxel — no es un valor
-   inventado). Reparto simétrico previo al shift: ±110px. Sobre esa
-   distribución ya corregida se aplica el desplazamiento de grupo de 1×D
-   (120px) hacia arriba, ya aprobado (ver más abajo): fila superior
-   110+120=230px arriba del centro; fila inferior 120-110=10px arriba del
-   centro (antes de este ajuste de hueco, ese mismo shift daba -30, que
-   causaba el overlap; con G=220 en vez de 180 el resultado es -10, con el
-   margen de 1.625px ya incluido). El TMC/aro NO se mueve, sigue en
-   50%/50% (WorldCanvas.tsx, HERO_RING_POSITION); separación aro-insignias
-   (3×D horizontal) ya validada, sin tocar. */
+/* Separación vertical entre filas — G = 220px de referencia entre centros
+   de fila (mínimo exacto 218.375px para que el tagline de 2 líneas, 38.375px
+   medido real en el DOM, no invada el círculo de la fila opuesta; +1.625px
+   de margen contra redondeo subpíxel — cálculo sin cambios, ver commit
+   dd18f5b). Corrección de simetría (hallazgo real, confirmado en captura):
+   el desplazamiento de grupo de 1×D hacia arriba que se sumó encima de este
+   reparto (dd18f5b) dejaba al TMC visualmente más cerca de la fila inferior
+   que de la superior — rompía la simetría respecto al centro del aro. Se
+   retira ese desplazamiento: con G fijo, la única distribución donde
+   distancia(TMC→fila superior) = distancia(TMC→fila inferior) es el reparto
+   simétrico puro X = G/2 = 110px — fila superior 110px arriba del centro,
+   fila inferior 110px abajo, mismo valor absoluto. El TMC/aro NO se mueve,
+   sigue en 50%/50% (WorldCanvas.tsx, HERO_RING_POSITION); tamaño 1.5×D y
+   separación horizontal 3×D ya validadas, sin tocar. */
 .homeBadge--left.homeBadge--top {
-  transform: translate(calc(-50% - var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 230px));
+  transform: translate(calc(-50% - var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 110px));
 }
 .homeBadge--right.homeBadge--top {
-  transform: translate(calc(-50% + var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 230px));
+  transform: translate(calc(-50% + var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 110px));
 }
 .homeBadge--left.homeBadge--bottom {
-  transform: translate(calc(-50% - var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 10px));
+  transform: translate(calc(-50% - var(--hb-scale) * 360px), calc(-50% + var(--hb-scale) * 110px));
 }
 .homeBadge--right.homeBadge--bottom {
-  transform: translate(calc(-50% + var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 10px));
+  transform: translate(calc(-50% + var(--hb-scale) * 360px), calc(-50% + var(--hb-scale) * 110px));
 }
 
 /* ---------- Logo oficial de operating unit (Master Handoff sección 11,
