@@ -18,7 +18,7 @@ interface FooterProps {
   contact: OverlaySection;
   social: OverlaySection;
   culture: OverlaySection;
-  socialChannels: { id: string; label: string }[];
+  socialChannels: { id: string; label: string; href?: string }[];
 }
 
 export function Footer({ aboutUs, contact, social, culture, socialChannels }: FooterProps) {

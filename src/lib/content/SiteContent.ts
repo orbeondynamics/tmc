@@ -11,7 +11,7 @@ export interface SiteContent {
   contactContent: OverlaySection;
   socialContent: OverlaySection;
   cultureContent: OverlaySection;
-  socialChannels: { id: string; label: string }[];
+  socialChannels: { id: string; label: string; href?: string }[];
   operatingUnits: OperatingUnitContent[];
   homeNarrativeSections: HomeNarrativeSection[];
   tmcStandardContent: { eyebrow: string; values: string[] };

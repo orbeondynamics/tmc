@@ -22,7 +22,7 @@ interface OverlayProps {
   /** Solo el overlay de Social lista los canales (sección 24). */
   showSocialChannels?: boolean;
   /** Canales a listar cuando showSocialChannels=true — viene de footer.md (Footer.tsx). */
-  socialChannels?: readonly { id: string; label: string }[];
+  socialChannels?: readonly { id: string; label: string; href?: string }[];
 }
 
 export function Overlay({
@@ -103,12 +103,35 @@ export function Overlay({
             ))}
             {showSocialChannels && (
               <ul className="tmcOverlay__channels">
-                {socialChannels.map((channel) => (
-                  <li key={channel.id} className="tmcOverlay__channel">
-                    <SocialIcon channelId={channel.id} />
-                    {channel.label}
-                  </li>
-                ))}
+                {socialChannels.map((channel) => {
+                  const content = (
+                    <>
+                      <SocialIcon channelId={channel.id} />
+                      {channel.label}
+                    </>
+                  );
+                  return (
+                    <li key={channel.id} className="tmcOverlay__channel">
+                      {/* Solo hay enlace cuando social-links.md trae un destino real
+                          (ver tmcContentSource.ts): con placeholders el canal queda
+                          como texto, sin navegación falsa. display: contents mantiene
+                          el mismo layout que el li sin enlace. */}
+                      {channel.href ? (
+                        <a
+                          href={channel.href}
+                          style={{ display: "contents" }}
+                          {...(channel.href.startsWith("mailto:")
+                            ? {}
+                            : { target: "_blank", rel: "noopener noreferrer" })}
+                        >
+                          {content}
+                        </a>
+                      ) : (
+                        content
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

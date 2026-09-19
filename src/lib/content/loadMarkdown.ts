@@ -21,6 +21,34 @@ import { join } from "path";
 
 const CONTENT_DIR = join(process.cwd(), "content", "tmc-world");
 
+/**
+ * Lee un archivo de texto plano `ETIQUETA=valor` de content/tmc-world/ (una
+ * pareja por línea, sin comillas). Independiente del orden de las líneas y de
+ * las mayúsculas de la etiqueta; ignora líneas vacías, sin `=` o que empiecen
+ * con `#`. Corta en el PRIMER `=` (los valores pueden contener `=`, p. ej.
+ * una URL con query). Si una etiqueta se repite, gana la primera. Devuelve
+ * `null` si el archivo no existe o no puede leerse.
+ */
+export function loadKeyValueFile(fileName: string): Record<string, string> | null {
+  let raw: string;
+  try {
+    raw = readFileSync(join(CONTENT_DIR, fileName), "utf8");
+  } catch {
+    return null;
+  }
+  const out: Record<string, string> = {};
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim().toUpperCase();
+    const value = trimmed.slice(eq + 1).trim();
+    if (key && !(key in out)) out[key] = value;
+  }
+  return out;
+}
+
 /** Bloque de contenido en el orden real del documento — un párrafo o una lista de viñetas. */
 export type MdBlock = { type: "paragraph"; text: string } | { type: "bullets"; items: string[] };
 

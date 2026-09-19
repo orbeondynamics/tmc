@@ -24,6 +24,7 @@
 
 import {
   loadContentFile,
+  loadKeyValueFile,
   findSection,
   findSubsection,
   flattenSection,
@@ -117,14 +118,48 @@ export function getCultureContent(): OverlaySection {
   return loadFooterBlock("THE TMC CULTURE", "culture", fallbackCulture);
 }
 
-export function getSocialChannels(): { id: string; label: string }[] {
+// Destinos de los 4 canales del footer (Instagram, TikTok, Facebook, Email),
+// editables en content/tmc-world/social-links.md (formato `ETIQUETA=valor`,
+// sin comillas, en cualquier orden). Solo se devuelve un destino REAL: un
+// placeholder sin sustituir (`..._AQUI`), un valor vacío o uno inválido
+// resulta en `undefined` y el canal se muestra sin enlace — nunca se
+// construye un href falso. Instagram/TikTok/Facebook deben ser URLs
+// http(s) completas; Email debe ser `mailto:usuario@dominio`.
+const SOCIAL_LINK_KEYS: Record<string, string> = {
+  instagram: "INSTAGRAM",
+  tiktok: "TIKTOK",
+  facebook: "FACEBOOK",
+  email: "EMAIL",
+};
+
+function validSocialHref(id: string, raw: string | undefined): string | undefined {
+  const value = raw?.trim();
+  if (!value || value.toUpperCase().includes("_AQUI")) return undefined;
+  if (id === "email") {
+    return /^mailto:[^\s@?]+@[^\s@?]+\.[^\s@?]+(\?\S*)?$/i.test(value) ? value : undefined;
+  }
+  try {
+    const url = new URL(value);
+    return (url.protocol === "https:" || url.protocol === "http:") && url.hostname.includes(".") ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function getSocialChannels(): { id: string; label: string; href?: string }[] {
+  const links = loadKeyValueFile("social-links.md");
+  const withHref = (channel: { id: string; label: string }) => {
+    const key = SOCIAL_LINK_KEYS[channel.id];
+    const href = key ? validSocialHref(channel.id, links?.[key]) : undefined;
+    return href ? { ...channel, href } : { ...channel };
+  };
   const doc = loadContentFile("footer");
   const section = doc && findSection(doc, "SOCIAL");
-  if (!doc || !section || section.bullets.length === 0) return [...fallbackSocialChannels];
+  if (!doc || !section || section.bullets.length === 0) return [...fallbackSocialChannels].map(withHref);
   return section.bullets.map((bullet) => {
     const [name] = bullet.split(" — ");
     const label = name.trim();
-    return { id: label.toLowerCase(), label };
+    return withHref({ id: label.toLowerCase(), label });
   });
 }
 
