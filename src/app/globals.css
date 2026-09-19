@@ -985,6 +985,15 @@ body:has(.worldRoot) .tmcFallback {
   filter: drop-shadow(0 0 3px rgba(6, 11, 24, 0.95)) drop-shadow(0 0 8px rgba(6, 11, 24, 0.75));
   transition: opacity 0.2s;
 }
+.tmcFooter__open {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.tmcFooter__socialIcon {
+  display: flex;
+}
 .tmcFooter__block:hover .tmcFooter__socialIcons {
   opacity: 1;
 }

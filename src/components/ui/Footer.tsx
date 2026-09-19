@@ -34,28 +34,68 @@ export function Footer({ aboutUs, contact, social, culture, socialChannels }: Fo
   return (
     <>
       <footer className="tmcFooter">
-        {blocks.map(({ section, short }) => (
-          <button
-            key={section.id}
-            type="button"
-            className="tmcFooter__block"
-            onClick={() => setOpenId(section.id)}
-          >
-            <span className="tmcFooter__heading">{short}</span>
-            <span className="tmcFooter__hint">{section.framing}</span>
-            {/* Prompt maestro sección 6.2: "el bloque SOCIAL usa íconos de
-                marca... en vez de solo texto" — antes los íconos solo
-                aparecían dentro del overlay (tras hacer click); ahora el
-                bloque del footer ya los muestra directamente. */}
-            {section.id === "social" && (
-              <span className="tmcFooter__socialIcons" aria-hidden="true">
-                {socialChannels.map((channel) => (
-                  <SocialIcon key={channel.id} channelId={channel.id} />
-                ))}
+        {blocks.map(({ section, short }) => {
+          const text = (
+            <>
+              <span className="tmcFooter__heading">{short}</span>
+              <span className="tmcFooter__hint">{section.framing}</span>
+            </>
+          );
+          if (section.id !== "social") {
+            return (
+              <button
+                key={section.id}
+                type="button"
+                className="tmcFooter__block"
+                onClick={() => setOpenId(section.id)}
+              >
+                {text}
+              </button>
+            );
+          }
+          // Prompt maestro sección 6.2: "el bloque SOCIAL usa íconos de
+          // marca... en vez de solo texto". Los íconos son destinos directos
+          // (sin abrir el overlay), y un <a> no puede ir dentro de un <button>:
+          // el bloque pasa a ser un contenedor con el mismo estilo, el texto
+          // sigue siendo el <button> que abre el overlay (acceso por teclado) y
+          // los íconos quedan como hermanos. El click en cualquier otra parte
+          // del bloque sigue abriendo el overlay, como antes.
+          return (
+            <div
+              key={section.id}
+              className="tmcFooter__block"
+              onClick={() => setOpenId(section.id)}
+            >
+              <button type="button" className="tmcFooter__open">
+                {text}
+              </button>
+              <span className="tmcFooter__socialIcons">
+                {socialChannels.map((channel) => {
+                  const icon = <SocialIcon channelId={channel.id} />;
+                  // Solo hay enlace cuando social-links.md trae un destino
+                  // válido (ver tmcContentSource.ts); con placeholders el ícono
+                  // queda sin enlace ni navegación. El mailto: ya viene completo
+                  // del archivo.
+                  if (!channel.href) return <span key={channel.id} className="tmcFooter__socialIcon">{icon}</span>;
+                  return (
+                    <a
+                      key={channel.id}
+                      className="tmcFooter__socialIcon"
+                      href={channel.href}
+                      aria-label={channel.label}
+                      onClick={(e) => e.stopPropagation()}
+                      {...(channel.href.startsWith("mailto:")
+                        ? {}
+                        : { target: "_blank", rel: "noopener noreferrer" })}
+                    >
+                      {icon}
+                    </a>
+                  );
+                })}
               </span>
-            )}
-          </button>
-        ))}
+            </div>
+          );
+        })}
       </footer>
 
       {active && (
