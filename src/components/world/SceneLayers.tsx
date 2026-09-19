@@ -319,6 +319,7 @@ export function windowCenterU(halfFrac: number, aspect: number): number {
 function usePlanePlacement(meshRef: React.RefObject<THREE.Mesh | null>, z: number) {
   const { camera, size } = useThree();
   const forward = useRef(new THREE.Vector3());
+  const ray = useRef(new THREE.Vector3());
 
   useFrame(() => {
     const mesh = meshRef.current;
@@ -357,7 +358,27 @@ function usePlanePlacement(meshRef: React.RefObject<THREE.Mesh | null>, z: numbe
     const uCenter = windowCenterU(halfFracVisible, aspect);
     const ixFinal = ix + (0.5 - uCenter) * planeWidth;
 
-    mesh.position.set(ixFinal, iy, z);
+    // Centrado VERTICAL (corrección del recorte inferior): con pitch, el rango
+    // visible sobre el plano no es simétrico alrededor de la intersección del
+    // eje óptico (iy) — el plano quedaba alto: en Hero faltaba imagen abajo
+    // (15–24 px en todo el ancho, medido) y sobraba arriba. Se centra sobre el
+    // punto medio del rango vertical realmente visible (rayos de los bordes
+    // superior e inferior de la pantalla, columna central). Sin cambio de
+    // escala ni del centro horizontal (regla de persona/palmera/lámpara).
+    let yCenter = iy;
+    const yEdge = [0, 0];
+    let edgesOk = true;
+    for (let k = 0; k < 2; k++) {
+      ray.current.set(0, k === 0 ? 1 : -1, 0.5).unproject(camera).sub(camera.position);
+      if (ray.current.z >= -1e-9) {
+        edgesOk = false;
+        break;
+      }
+      yEdge[k] = camera.position.y + ray.current.y * ((z - camera.position.z) / ray.current.z);
+    }
+    if (edgesOk) yCenter = (yEdge[0] + yEdge[1]) / 2;
+
+    mesh.position.set(ixFinal, yCenter, z);
     mesh.scale.setScalar(requiredHeight);
   });
 
