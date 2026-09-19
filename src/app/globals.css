@@ -341,19 +341,19 @@ body:has(.worldRoot) .tmcFallback {
   mask-image: linear-gradient(to bottom, transparent 0%, #000 3%, #000 97%, transparent 100%);
 }
 .tmcOverlay__close {
+  /* Tamaño de la X (Fase final): antes 22px (glifo de ~10px, difícil de
+     identificar). --x-size la agranda a 30px, el máximo compatible con el
+     criterio ya cerrado de margen >= 1.5 × su propio diámetro respecto al
+     panel Y con caber en pantalla a 375px (columna libre a la izquierda del
+     panel ~65px: 45px de margen + ~14.5px de ancho de la X). Posición: sigue
+     completamente FUERA del panel (right: 100% + 1.5 × --x-size) y conserva
+     el mismo centro vertical que tenía (26px desde el borde superior). */
+  --x-size: 30px;
   position: absolute;
-  top: 15px;
-  /* Hallazgo 17: arriba a la IZQUIERDA (spec explícita del dueño del
-     proyecto) — antes arriba a la derecha. Fase 2 (Punto 2): ahora COMPLETAMENTE
-     FUERA del bounding box del panel, a su izquierda: su borde derecho queda a
-     33px (1.5 × 22px, el diámetro/alto de su caja con font-size 22px y
-     line-height 1) del borde izquierdo del panel. Misma altura vertical de
-     antes (+15px medidos desde el borde superior del panel: 14px de top + 1px de border-top que tenía). Sigue siendo hijo de .tmcOverlay__frame, no de
-     .tmcOverlay__panel — la mask-image del panel recortaría todo lo que
-     quede fuera de su caja. */
-  right: calc(100% + 33px);
+  top: calc(26px - var(--x-size) / 2);
+  right: calc(100% + var(--x-size) * 1.5);
   z-index: 1;
-  font-size: 22px;
+  font-size: var(--x-size);
   color: var(--gold-light);
   line-height: 1;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 1px 8px rgba(0, 0, 0, 0.6);
