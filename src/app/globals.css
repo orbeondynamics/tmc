@@ -1029,8 +1029,13 @@ body:has(.worldRoot) .tmcFallback {
    de grid compartido entre filas (que suma anchos aunque estén vacías en
    otras filas) — de ahí que .tmcHeader__nav recupere su propio
    display:flex aquí (en vez de contents) y .tmcHeader__navGroup se vuelva
-   contents (ver Header.tsx para el porqué de 2 <nav> en vez de 1). */
-@media (max-width: 430px) {
+   contents (ver Header.tsx para el porqué de 2 <nav> en vez de 1).
+   Fase 2 (hueco de breakpoint 431–940px, medido): este bloque se extiende
+   de 430px a 520px — hasta ahí la fila propia del nav (404px de ancho
+   mínimo con fuente 10px + padding) no cabe, y un layout de una fila
+   envolvía sin control. De 521px a 1050px aplica el bloque de 2 filas de
+   abajo; desde 1051px el layout de escritorio de una fila (ya validado). */
+@media (max-width: 520px) {
   .tmcHeader {
     grid-template-columns: auto 1fr;
     grid-template-rows: auto auto auto;
@@ -1096,6 +1101,41 @@ body:has(.worldRoot) .tmcFallback {
     grid-row: 3;
     grid-column: 2;
     justify-self: end;
+    white-space: nowrap;
+  }
+}
+
+/* Fase 2 (hueco medido 431–940px, mismo Header.tsx en Home y unidades): de
+   521px a 1050px (las páginas de unidad, con el enlace "← Back to TMC",
+   siguen envolviendo hasta ~1020px; una fila desde ~1060px) los 5 items + logo + botón NO caben juntos en una fila (el
+   layout de escritorio envolvía sin control: "PRIVATE INQUIRY" compartía
+   fila con parte del nav, o 1 item por fila en unidades por el texto
+   extra de "← Back to TMC"). Layout de 2 filas, mismo texto/orden/tamaño:
+   fila 1 = logo (+ enlace de retorno en unidades) a la izquierda y el botón
+   a la derecha; fila 2 = los 5 items en una sola fila centrada, sin
+   envolver. Desde 1051px vuelve el layout de escritorio de una fila. */
+@media (min-width: 521px) and (max-width: 1050px) {
+  .tmcHeader {
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    row-gap: 6px;
+  }
+  .tmcHeader__brand {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  .tmcHeader__inquiry {
+    grid-row: 1;
+    grid-column: 3;
+    white-space: nowrap;
+  }
+  .tmcHeader__navGroup {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    flex-wrap: nowrap;
+    justify-content: center;
+  }
+  .tmcHeader__navItem {
     white-space: nowrap;
   }
 }
