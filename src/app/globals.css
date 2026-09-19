@@ -290,11 +290,18 @@ body:has(.worldRoot) .tmcFallback {
    área scrolleable (__scroll, ver abajo) como hermanos, no como
    padre/hijo del mismo overflow. display:flex + max-height acotan el
    alto total; __scroll toma el espacio restante y es quien scrollea. */
-.tmcOverlay__panel {
+.tmcOverlay__frame {
   position: relative;
   max-width: 480px;
   width: 100%;
   max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+.tmcOverlay__panel {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   /* Hallazgo 19: mismo criterio que el backdrop — opacidad reducida
@@ -330,6 +337,20 @@ body:has(.worldRoot) .tmcFallback {
      para que nunca se superponga con el texto, en vez de un ajuste de
      posición suelto. */
   padding: 52px 36px 40px;
+}
+/* Fase 2 (Punto 4): en mobile el panel no puede pasar de 65% del ancho ni
+   70% del alto del viewport (antes ~87% x ~93% a 375x667). El contenido
+   largo sigue completo, con scroll interno (.tmcOverlay__scroll). El
+   padding horizontal baja de 36px a 18px para no perder ancho de línea de
+   lectura; el tamaño de fuente no cambia. */
+@media (max-width: 520px) {
+  .tmcOverlay__frame {
+    width: 65vw;
+    max-height: 70vh;
+  }
+  .tmcOverlay__scroll {
+    padding: 44px 18px 28px;
+  }
 }
 .tmcOverlay__eyebrow {
   font-size: 11px;

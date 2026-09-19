@@ -64,9 +64,14 @@ export function Overlay({
 
   return (
     <div className="tmcOverlay" role="presentation" data-lenis-prevent>
+      {/* Fase 2 (Puntos 2 y 4): .tmcOverlay__frame es el contenedor de
+          tamaño/diálogo — hermano-padre del control de cierre y del panel
+          visual (.tmcOverlay__panel, que lleva mask-image y recortaría
+          cualquier cosa fuera de su caja). Así el botón puede vivir fuera
+          del bounding box del panel sin perder foco/trampa de Tab. */}
       <div
         ref={panelRef}
-        className="tmcOverlay__panel"
+        className="tmcOverlay__frame"
         role="dialog"
         aria-modal="true"
         aria-label={section.label}
@@ -87,24 +92,26 @@ export function Overlay({
         >
           ×
         </button>
-        <div className="tmcOverlay__scroll">
-          <p className="tmcOverlay__eyebrow">{section.label}</p>
-          <h2 className="tmcOverlay__title">{section.framing}</h2>
-          {section.body.map((paragraph) => (
-            <p key={paragraph} className="tmcOverlay__body">
-              {paragraph}
-            </p>
-          ))}
-          {showSocialChannels && (
-            <ul className="tmcOverlay__channels">
-              {socialChannels.map((channel) => (
-                <li key={channel.id} className="tmcOverlay__channel">
-                  <SocialIcon channelId={channel.id} />
-                  {channel.label}
-                </li>
-              ))}
-            </ul>
-          )}
+        <div className="tmcOverlay__panel">
+          <div className="tmcOverlay__scroll">
+            <p className="tmcOverlay__eyebrow">{section.label}</p>
+            <h2 className="tmcOverlay__title">{section.framing}</h2>
+            {section.body.map((paragraph) => (
+              <p key={paragraph} className="tmcOverlay__body">
+                {paragraph}
+              </p>
+            ))}
+            {showSocialChannels && (
+              <ul className="tmcOverlay__channels">
+                {socialChannels.map((channel) => (
+                  <li key={channel.id} className="tmcOverlay__channel">
+                    <SocialIcon channelId={channel.id} />
+                    {channel.label}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     </div>
