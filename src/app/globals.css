@@ -320,10 +320,16 @@ body:has(.worldRoot) .tmcFallback {
 }
 .tmcOverlay__close {
   position: absolute;
-  top: 14px;
+  top: 15px;
   /* Hallazgo 17: arriba a la IZQUIERDA (spec explícita del dueño del
-     proyecto) — antes arriba a la derecha. */
-  left: 16px;
+     proyecto) — antes arriba a la derecha. Fase 2 (Punto 2): ahora COMPLETAMENTE
+     FUERA del bounding box del panel, a su izquierda: su borde derecho queda a
+     33px (1.5 × 22px, el diámetro/alto de su caja con font-size 22px y
+     line-height 1) del borde izquierdo del panel. Misma altura vertical de
+     antes (+15px medidos desde el borde superior del panel: 14px de top + 1px de border-top que tenía). Sigue siendo hijo de .tmcOverlay__frame, no de
+     .tmcOverlay__panel — la mask-image del panel recortaría todo lo que
+     quede fuera de su caja. */
+  right: calc(100% + 33px);
   z-index: 1;
   font-size: 22px;
   color: var(--gold-light);
