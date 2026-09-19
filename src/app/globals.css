@@ -1095,128 +1095,71 @@ body:has(.worldRoot) .tmcFallback {
      dueño del proyecto, sistema de composición de 3 valores). */
 }
 
-/* Reestructuración del header mobile (≤430px, mismo breakpoint que ya usa
-   headerBottomFor() para "header mobile"): con los 5 items + el botón en
-   una sola fila que envuelve, el header medía ~225px de alto, comiéndose
-   el presupuesto vertical para el logo/insignias del home. Pura
-   redistribución (Opción B, aprobada): mismo texto/orden/tamaño de fuente,
-   solo agrupación — fila 1 logo+3 items, fila 2 los otros 2 (a la
-   derecha), fila 3 el botón (a la derecha). Medido: ancho mínimo real de
-   los 5 items + logo (443.9px) YA excede 430px sin ningún gap/padding —
-   por eso no puede ser "3 en fila + 2 compartiendo columna con el botón de
-   145.5px" (probado, no cabe en ninguno de los 3 anchos de validación):
-   cada fila necesita su PROPIA caja con ancho independiente, no un track
-   de grid compartido entre filas (que suma anchos aunque estén vacías en
-   otras filas) — de ahí que .tmcHeader__nav recupere su propio
-   display:flex aquí (en vez de contents) y .tmcHeader__navGroup se vuelva
-   contents (ver Header.tsx para el porqué de 2 <nav> en vez de 1).
-   Fase 2 (hueco de breakpoint 431–940px, medido): este bloque se extiende
-   de 430px a 520px — hasta ahí la fila propia del nav (404px de ancho
-   mínimo con fuente 10px + padding) no cabe, y un layout de una fila
-   envolvía sin control. De 521px a 1050px aplica el bloque de 2 filas de
-   abajo; desde 1051px el layout de escritorio de una fila (ya validado). */
-@media (max-width: 520px) {
+/* Header móvil/tablet (≤1050px) — 3 áreas verticales lado a lado (spec del
+   equipo): IZQUIERDA el logo TMC (y el enlace "← Back to TMC" en unidades);
+   CENTRO OUR PURPOSE / OUR VISION / OUR PROMISE apilados; DERECHA OUR VALUES /
+   OUR CLIENTS / PRIVATE INQUIRY apilados. No es una fila ni tres filas.
+   Reemplaza los dos layouts previos (3 filas ≤520px y 2 filas 521–1050px) y
+   cubre TODO el rango sin huecos: misma estructura desde 375px hasta 1050px;
+   desde 1051px rige el layout de escritorio de una fila. Los tamaños de fuente
+   no se tocan (siguen los de los breakpoints de 800/720px de arriba). La
+   columna izquierda es fija (56px) para que Home y unidades sean idénticos: el
+   enlace de retorno pasa al flujo bajo el logo y envuelve en 2 líneas dentro
+   de esa columna en vez de invadir el centro. */
+@media (max-width: 1050px) {
   .tmcHeader {
-    grid-template-columns: auto 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-columns: 56px 1fr auto;
+    grid-template-rows: auto auto;
+    align-items: start;
     row-gap: 8px;
   }
   .tmcHeader__brand {
-    grid-row: 1 / 4;
     grid-column: 1;
-    align-self: center;
-    /* Bug real de validación: incluso apilado (columna, no fila), el ancho
-       de la columna del grid sigue siendo el del hijo MÁS ANCHO — el
-       enlace "← Back to TMC" (~100px) es más ancho que el círculo del
-       logo (40px), así que la columna 1 crecía igual y le robaba ese
-       espacio a las 3 filas de la derecha (ya calibradas al presupuesto
-       vertical más ajustado, Bug 1/2) — confirmado: el nav se salía del
-       viewport a la derecha. Fix real: sacar el enlace del flujo con
-       position:absolute (no contribuye al ancho de .tmcHeader__brand) y
-       anclarlo debajo del círculo — la columna 1 vuelve a medir 40px,
-       igual que antes de este bug. */
-    position: relative;
+    grid-row: 1 / 3;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
   .tmcHeader__backLink {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 4px;
+    max-width: 56px;
     font-size: 11px;
+    line-height: 1.25;
+    white-space: normal;
   }
   .tmcHeader__navGroup {
     display: contents;
   }
   .tmcHeader__nav {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    gap: 2px;
+    pointer-events: auto;
   }
   .tmcHeader__nav--primary {
-    grid-row: 1;
     grid-column: 2;
-    justify-self: start;
+    grid-row: 1 / 3;
+    justify-self: center;
+    align-items: flex-start;
   }
   .tmcHeader__nav--secondary {
-    grid-row: 2;
-    grid-column: 2;
-    justify-content: flex-end;
+    grid-column: 3;
+    grid-row: 1;
     justify-self: end;
+    align-items: flex-end;
+  }
+  .tmcHeader__inquiry {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+    white-space: nowrap;
   }
   .tmcHeader__navItem {
     white-space: nowrap;
   }
-  /* No hace falta anular "item + item::before" entre filas: al ser 2
-     <nav> reales (primary/secondary, ver Header.tsx), el último item de
-     primary y el primero de secondary ya NO son hermanos DOM adyacentes
-     — ese selector simplemente no los alcanza. El separador EXPLÍCITO de
-     desktop (arriba, ".tmcHeader__nav--secondary > :first-child::before",
-     agregado para no perder el límite entre item 3 y 4 cuando ambos <nav>
-     se aplanan en una sola fila) sí hay que anularlo aquí — en mobile ese
-     límite es un salto de fila, no un separador visual. */
+  /* Items apilados: sin separadores verticales entre ellos. */
+  .tmcHeader__navItem + .tmcHeader__navItem::before,
   .tmcHeader__nav--secondary > .tmcHeader__navItem:first-child::before {
     content: none;
-  }
-  .tmcHeader__inquiry {
-    grid-row: 3;
-    grid-column: 2;
-    justify-self: end;
-    white-space: nowrap;
-  }
-}
-
-/* Fase 2 (hueco medido 431–940px, mismo Header.tsx en Home y unidades): de
-   521px a 1050px (las páginas de unidad, con el enlace "← Back to TMC",
-   siguen envolviendo hasta ~1020px; una fila desde ~1060px) los 5 items + logo + botón NO caben juntos en una fila (el
-   layout de escritorio envolvía sin control: "PRIVATE INQUIRY" compartía
-   fila con parte del nav, o 1 item por fila en unidades por el texto
-   extra de "← Back to TMC"). Layout de 2 filas, mismo texto/orden/tamaño:
-   fila 1 = logo (+ enlace de retorno en unidades) a la izquierda y el botón
-   a la derecha; fila 2 = los 5 items en una sola fila centrada, sin
-   envolver. Desde 1051px vuelve el layout de escritorio de una fila. */
-@media (min-width: 521px) and (max-width: 1050px) {
-  .tmcHeader {
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto auto;
-    row-gap: 6px;
-  }
-  .tmcHeader__brand {
-    grid-row: 1;
-    grid-column: 1;
-  }
-  .tmcHeader__inquiry {
-    grid-row: 1;
-    grid-column: 3;
-    white-space: nowrap;
-  }
-  .tmcHeader__navGroup {
-    grid-row: 2;
-    grid-column: 1 / -1;
-    flex-wrap: nowrap;
-    justify-content: center;
-  }
-  .tmcHeader__navItem {
-    white-space: nowrap;
   }
 }
 
