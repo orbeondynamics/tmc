@@ -66,7 +66,7 @@
 //
 import { useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { tmcAssets } from "@/config/tmcAssets";
 
@@ -88,36 +88,180 @@ const COVERAGE_MARGIN = 1.0;
 interface LayerDef {
   src: string;
   z: number;
-  /** Plano base de relleno (Fase 2, Punto 6): opaco, con UV extendidas y
-   * wrap espejo — ver FILL_PAD. */
+  /** Plano base de relleno (Fase 2, Punto 6): master-background.webp opaco. */
   fill?: boolean;
 }
 
 // Fase 2 (Punto 6, "0% de agujeros #060B18"): las 6 capas son recortes que
 // dejan huecos transparentes entre sí (5.75% del composite de las capas ya
 // era el fondo #060B18 con registro perfecto, medido contra
-// master-background.webp) y, con COVERAGE_MARGIN = 1.0, el pitch de la
-// cámara hero además deja ver ~25–35px de fondo en los bordes. Solución
-// robusta: un plano base con el master-background.webp original (la imagen
-// de la que salieron las capas) detrás de todo, con EXACTAMENTE la misma
-// transformación que las capas (mismo centro de ventana, misma escala:
-// queda registrado), así cualquier hueco muestra la foto real en su lugar.
-// Sus UV se extienden FILL_PAD (8%: cubre con holgura el keystone del hero,
-// ~3–4%) más allá de [0,1] con wrap espejo para continuar la imagen donde el
-// plano no llega. Con un pad grande el espejo se ve como duplicación en los
-// waypoints oblicuos (medido), por eso se limita al keystone.
-const FILL_PAD = 0.08;
+// master-background.webp). Solución: un plano base con el master-background.webp
+// original (la imagen de la que salieron las capas) detrás de todo, con
+// EXACTAMENTE la misma transformación que las capas (mismo centro de ventana,
+// misma escala: queda registrado), así cualquier hueco muestra la foto real.
+//
+// Cobertura del frustum (causa raíz, medida con el modelo exacto): los planos
+// son z-perpendiculares y se dimensionan sobre el EJE ÓPTICO, pero cuando la
+// cámara gira (yaw hasta ~30° hacia Luxury/Cleaners/Project Office) el frustum
+// corta el plano como un trapecio cuya parte lejana se sale de la imagen hasta
+// 0.56 de su ancho (0.88 en 21:9) y 0.59 de su alto. Ninguna escala razonable
+// lo cubre sin cambiar la composición, y la imagen es finita: hay que
+// EXTENDER el contenido más allá de sus bordes. FillExtension es un plano
+// opaco, registrado con la misma transformación, cuya textura (baja
+// resolución) es el master con sus bordes prolongados (clamp) y difuminados —
+// sin espejo, sin repetición: no puede duplicar elementos, y no deja ver
+// #060B18 en ningún punto del frustum dentro de EXT_PAD_U/EXT_PAD_V.
+const EXT_PAD_U = 1.0; // extensión por lado, en anchos de imagen (máx. necesario medido: 0.88)
+const EXT_PAD_V = 0.7; // por lado, en altos de imagen (máx. necesario medido: 0.62)
+const EXT_LOWRES_DIV = 6; // el master se reduce 1/6 para la extensión (el borde nítido lo pone el plano master)
+const EXT_BLUR_RADIUS = 3; // px en baja resolución: suaviza costuras y esquinas
+const EXT_AMBIENT_STRIP = 0.18; // franja exterior (fracción de la dimensión) que define el color ambiente
+const EXT_FEATHER = 0.14; // distancia (fracción de la dimensión) en la que el borde real se funde al ambiente
+const EXT_PROFILE_BLUR = 0.05; // suavizado del perfil ambiente, fracción de la dimensión
 
-function extendedPlane(pad: number): THREE.PlaneGeometry {
-  const g = new THREE.PlaneGeometry(IMAGE_ASPECT * (1 + 2 * pad), 1 + 2 * pad);
-  const uv = g.attributes.uv;
-  const lo = -pad;
-  const hi = 1 + pad;
-  uv.setXY(0, lo, hi);
-  uv.setXY(1, hi, hi);
-  uv.setXY(2, lo, lo);
-  uv.setXY(3, hi, lo);
-  return g;
+function boxBlurChannelPass(src: Uint8ClampedArray, dst: Uint8ClampedArray, w: number, h: number, r: number, horizontal: boolean) {
+  const len = horizontal ? w : h;
+  const lines = horizontal ? h : w;
+  const step = horizontal ? 4 : w * 4;
+  const lineStep = horizontal ? w * 4 : 4;
+  const norm = 1 / (2 * r + 1);
+  for (let c = 0; c < 3; c++) {
+    for (let l = 0; l < lines; l++) {
+      const base = l * lineStep + c;
+      let acc = 0;
+      for (let i = -r; i <= r; i++) acc += src[base + Math.min(len - 1, Math.max(0, i)) * step];
+      for (let i = 0; i < len; i++) {
+        dst[base + i * step] = acc * norm;
+        acc += src[base + Math.min(len - 1, i + r + 1) * step] - src[base + Math.max(0, i - r) * step];
+      }
+    }
+  }
+}
+
+/** Suaviza un perfil RGB (n x 3) con una caja de radio r, 3 pasadas. */
+function smoothProfile(p: Float32Array, n: number, r: number) {
+  const tmp = new Float32Array(p.length);
+  for (let pass = 0; pass < 3; pass++) {
+    for (let c = 0; c < 3; c++) {
+      let acc = 0;
+      for (let i = -r; i <= r; i++) acc += p[Math.min(n - 1, Math.max(0, i)) * 3 + c];
+      for (let i = 0; i < n; i++) {
+        tmp[i * 3 + c] = acc / (2 * r + 1);
+        acc += p[Math.min(n - 1, i + r + 1) * 3 + c] - p[Math.max(0, i - r) * 3 + c];
+      }
+    }
+    p.set(tmp);
+  }
+}
+
+const ease = (x: number) => x * x * (3 - 2 * x);
+
+/**
+ * Textura de extensión: el master en baja resolución en el centro; fuera de
+ * sus bordes, el píxel del borde REAL (continuidad exacta con el plano nítido)
+ * se funde suavemente a un color ambiente por fila/columna — el promedio de la
+ * franja exterior de la imagen, suavizado. Sin espejo ni repetición de
+ * contenido: no puede duplicar elementos. (Prolongar sin más la columna del
+ * borde daba bandas marrones por palmeras/terraza oscuras en el borde.)
+ */
+function buildExtensionTexture(image: CanvasImageSource & { width: number; height: number }): { texture: THREE.CanvasTexture; geometry: THREE.PlaneGeometry } {
+  const w0 = Math.round(image.width / EXT_LOWRES_DIV);
+  const h0 = Math.round(image.height / EXT_LOWRES_DIV);
+  const pu = Math.round(w0 * EXT_PAD_U);
+  const pv = Math.round(h0 * EXT_PAD_V);
+  const W = w0 + 2 * pu;
+  const H = h0 + 2 * pv;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(image, pu, pv, w0, h0);
+  const img = ctx.getImageData(0, 0, W, H);
+  const d = img.data;
+  const at = (x: number, y: number) => (y * W + x) * 4;
+
+  // 1) izquierda / derecha (filas de la imagen)
+  const stripW = Math.max(1, Math.round(w0 * EXT_AMBIENT_STRIP));
+  const featherU = Math.max(1, w0 * EXT_FEATHER);
+  const left = new Float32Array(h0 * 3);
+  const right = new Float32Array(h0 * 3);
+  for (let y = 0; y < h0; y++) {
+    for (let c = 0; c < 3; c++) {
+      let sl = 0;
+      let sr = 0;
+      for (let k = 0; k < stripW; k++) {
+        sl += d[at(pu + k, pv + y) + c];
+        sr += d[at(pu + w0 - 1 - k, pv + y) + c];
+      }
+      left[y * 3 + c] = sl / stripW;
+      right[y * 3 + c] = sr / stripW;
+    }
+  }
+  const pr = Math.max(1, Math.round(h0 * EXT_PROFILE_BLUR));
+  smoothProfile(left, h0, pr);
+  smoothProfile(right, h0, pr);
+  for (let y = 0; y < h0; y++) {
+    for (let x = 0; x < pu; x++) {
+      const tL = ease(Math.min(1, (pu - x) / featherU));
+      const tR = ease(Math.min(1, (x + 1) / featherU));
+      for (let c = 0; c < 3; c++) {
+        const eL = d[at(pu, pv + y) + c];
+        const eR = d[at(pu + w0 - 1, pv + y) + c];
+        d[at(x, pv + y) + c] = eL + (left[y * 3 + c] - eL) * tL;
+        d[at(pu + w0 + x, pv + y) + c] = eR + (right[y * 3 + c] - eR) * tR;
+      }
+    }
+  }
+
+  // 2) arriba / abajo sobre TODO el ancho (así las esquinas también se cubren)
+  const stripH = Math.max(1, Math.round(h0 * EXT_AMBIENT_STRIP));
+  const featherV = Math.max(1, h0 * EXT_FEATHER);
+  const top = new Float32Array(W * 3);
+  const bottom = new Float32Array(W * 3);
+  for (let x = 0; x < W; x++) {
+    for (let c = 0; c < 3; c++) {
+      let st = 0;
+      let sb = 0;
+      for (let k = 0; k < stripH; k++) {
+        st += d[at(x, pv + k) + c];
+        sb += d[at(x, pv + h0 - 1 - k) + c];
+      }
+      top[x * 3 + c] = st / stripH;
+      bottom[x * 3 + c] = sb / stripH;
+    }
+  }
+  const pc = Math.max(1, Math.round(w0 * EXT_PROFILE_BLUR));
+  smoothProfile(top, W, pc);
+  smoothProfile(bottom, W, pc);
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < pv; y++) {
+      const tT = ease(Math.min(1, (pv - y) / featherV));
+      const tB = ease(Math.min(1, (y + 1) / featherV));
+      for (let c = 0; c < 3; c++) {
+        const eT = d[at(x, pv) + c];
+        const eB = d[at(x, pv + h0 - 1) + c];
+        d[at(x, y) + c] = eT + (top[x * 3 + c] - eT) * tT;
+        d[at(x, pv + h0 + y) + c] = eB + (bottom[x * 3 + c] - eB) * tB;
+      }
+    }
+  }
+
+  // 3) suavizado ligero de costuras/esquinas y alfa opaco
+  const tmp = new Uint8ClampedArray(d.length);
+  for (let i = 0; i < 2; i++) {
+    boxBlurChannelPass(d, tmp, W, H, EXT_BLUR_RADIUS, true);
+    boxBlurChannelPass(tmp, d, W, H, EXT_BLUR_RADIUS, false);
+  }
+  for (let i = 3; i < d.length; i += 4) d[i] = 255;
+  ctx.putImageData(img, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  const geometry = new THREE.PlaneGeometry(IMAGE_ASPECT * (W / w0), H / h0);
+  return { texture, geometry };
 }
 
 // Sujetos protegidos, rango horizontal normalizado [0,1] de la imagen
@@ -167,41 +311,13 @@ export function windowCenterU(halfFrac: number, aspect: number): number {
   return (a1 + b2) / 2 + (k * (wL - wR)) / 2;
 }
 
-function Layer({ src, z, fill }: LayerDef) {
-  const texture = useTexture(src);
-  // Hallazgo 7 (color más claro que el original, confirmado comparando
-  // contra master-background.webp — sí existe un master real, no fue
-  // necesario reportar su ausencia): causa raíz real, no un ajuste de
-  // tono — THREE.TextureLoader (y useTexture de drei, que lo usa tal
-  // cual, sin tocar colorSpace) deja Texture.colorSpace en su default de
-  // constructor, NoColorSpace (verificado en node_modules/three/src/
-  // textures/Texture.js), tratando estos 6 PNG/WEBP fotográficos como
-  // datos YA lineales. El renderer les aplica igual la codificación sRGB
-  // de salida — un "doble gamma" que aclara y desatura sistemáticamente
-  // cualquier textura de color a la que le falte esta línea (bug clásico
-  // de Three.js, no exclusivo de este proyecto). meshBasicMaterial ya usa
-  // toneMapped={false} más abajo (correcto, evita el tone-mapping ACES
-  // del renderer), pero eso no cubre color space — son 2 pasos distintos
-  // del pipeline. Fix real: declarar explícitamente que es una textura de
-  // color, no un mapa de datos.
-  /* eslint-disable-next-line react-hooks/immutability -- texture (three.js) es un
-     objeto imperativo del grafo de escena de R3F, no estado de React; asignar
-     colorSpace tras cargarla es el patrón oficial de la librería (mismo criterio ya
-     aplicado a `camera` en CameraRig.tsx). */
-  texture.colorSpace = THREE.SRGBColorSpace;
-  if (fill) {
-    /* eslint-disable react-hooks/immutability -- texture (three.js) es un objeto
-       imperativo del grafo de escena de R3F; el modo de wrap se declara una vez
-       tras cargarla, antes de su primera subida a GPU (mismo criterio que
-       colorSpace arriba). */
-    texture.wrapS = THREE.MirroredRepeatWrapping;
-    texture.wrapT = THREE.MirroredRepeatWrapping;
-    texture.needsUpdate = true;
-    /* eslint-enable react-hooks/immutability */
-  }
-  const fillGeometry = useMemo(() => (fill ? extendedPlane(FILL_PAD) : null), [fill]);
+/** Coloca un plano de fondo (z fijo) con la transformación común a todas las
+ * capas: centrado en la intersección del eje óptico con su plano, alto = cover
+ * exacto (COVERAGE_MARGIN) y desplazado por el centro de ventana windowCenterU.
+ * Misma matemática para las 6 capas, el plano master y la extensión: quedan
+ * registrados entre sí. */
+function usePlanePlacement(meshRef: React.RefObject<THREE.Mesh | null>, z: number) {
   const { camera, size } = useThree();
-  const meshRef = useRef<THREE.Mesh>(null);
   const forward = useRef(new THREE.Vector3());
 
   useFrame(() => {
@@ -245,10 +361,57 @@ function Layer({ src, z, fill }: LayerDef) {
     mesh.scale.setScalar(requiredHeight);
   });
 
+}
+
+function Layer({ src, z, fill }: LayerDef) {
+  const texture = useTexture(src);
+  // Hallazgo 7 (color más claro que el original, confirmado comparando
+  // contra master-background.webp — sí existe un master real, no fue
+  // necesario reportar su ausencia): causa raíz real, no un ajuste de
+  // tono — THREE.TextureLoader (y useTexture de drei, que lo usa tal
+  // cual, sin tocar colorSpace) deja Texture.colorSpace en su default de
+  // constructor, NoColorSpace (verificado en node_modules/three/src/
+  // textures/Texture.js), tratando estos 6 PNG/WEBP fotográficos como
+  // datos YA lineales. El renderer les aplica igual la codificación sRGB
+  // de salida — un "doble gamma" que aclara y desatura sistemáticamente
+  // cualquier textura de color a la que le falte esta línea (bug clásico
+  // de Three.js, no exclusivo de este proyecto). meshBasicMaterial ya usa
+  // toneMapped={false} más abajo (correcto, evita el tone-mapping ACES
+  // del renderer), pero eso no cubre color space — son 2 pasos distintos
+  // del pipeline. Fix real: declarar explícitamente que es una textura de
+  // color, no un mapa de datos.
+  /* eslint-disable-next-line react-hooks/immutability -- texture (three.js) es un
+     objeto imperativo del grafo de escena de R3F, no estado de React; asignar
+     colorSpace tras cargarla es el patrón oficial de la librería (mismo criterio ya
+     aplicado a `camera` en CameraRig.tsx). */
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const meshRef = useRef<THREE.Mesh>(null);
+  usePlanePlacement(meshRef, z);
+
   return (
-    <mesh ref={meshRef} geometry={fillGeometry ?? undefined}>
-      {!fillGeometry && <planeGeometry args={[IMAGE_ASPECT, 1]} />}
+    <mesh ref={meshRef} renderOrder={fill ? -1 : 0}>
+      <planeGeometry args={[IMAGE_ASPECT, 1]} />
       <meshBasicMaterial map={texture} transparent={!fill} depthWrite={false} toneMapped={false} />
+    </mesh>
+  );
+}
+
+/** Plano de extensión (ver EXT_PAD_U): opaco, registrado con las capas. */
+function FillExtension({ z }: { z: number }) {
+  const master = useTexture(tmcAssets.masterBackground);
+  const built = useMemo(() => buildExtensionTexture(master.image as HTMLImageElement), [master]);
+  useEffect(
+    () => () => {
+      built.texture.dispose();
+      built.geometry.dispose();
+    },
+    [built]
+  );
+  const meshRef = useRef<THREE.Mesh>(null);
+  usePlanePlacement(meshRef, z);
+  return (
+    <mesh ref={meshRef} geometry={built.geometry} renderOrder={-2}>
+      <meshBasicMaterial map={built.texture} depthWrite={false} toneMapped={false} />
     </mesh>
   );
 }
@@ -256,6 +419,7 @@ function Layer({ src, z, fill }: LayerDef) {
 export function SceneLayers() {
   return (
     <group>
+      <FillExtension z={-45} />
       {LAYERS.map((layer) => (
         <Layer key={layer.src} {...layer} />
       ))}
