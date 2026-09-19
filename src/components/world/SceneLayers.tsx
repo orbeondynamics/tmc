@@ -55,10 +55,11 @@
 //   • si NO caben (aspects angostos), el recorte se reparte de forma
 //     proporcional y simétrica: cada extremo pierde la MISMA fracción de su
 //     propio ancho — ninguno se sacrifica por completo mientras el otro queda
-//     intacto. Es continuo con el caso anterior. Cuando la ventana es tan
-//     angosta que no puede tocar ambos a la vez, se centra equidistante de
-//     los bordes internos de los dos sujetos (regla simétrica llevada al
-//     límite, sin agregar ninguna prioridad entre ellos).
+//     intacto. Es continuo con el caso anterior.
+//   • mobile portrait (aspect < 1.24, decisión del equipo): la ventana ya no
+//     puede tocar ambos sujetos, y se prioriza a la PERSONA sobre
+//     palmera/lámpara: la ventana se centra en la persona (sin salirse de la
+//     imagen). Palmera/lámpara se pierden ahí.
 // Al ser el mismo centro para todas las capas quedan registradas entre sí
 // (antes terraza/persona iban ~49px desplazadas del resto, dejando ver el
 // fondo #060B18 por los cortes de las capas inferiores).
@@ -136,12 +137,23 @@ const LAYERS: LayerDef[] = [
   { src: tmcAssets.layers.person, z: -2 },
 ];
 
+// Decisión del equipo (mobile portrait): por debajo de este aspect la persona se
+// prioriza sobre palmera/lámpara — es aceptable perder estas últimas, parcial o
+// totalmente, con tal de mostrar a la persona. Por encima rige la regla simétrica.
+const PERSON_PRIORITY_MAX_ASPECT = 1.24;
+
 /** Centro horizontal (u, 0..1) de la ventana visible sobre la imagen.
  * halfFrac = mitad de la fracción del ancho de imagen que entra en pantalla
  * (depende solo del aspect y COVERAGE_MARGIN, no del scroll). Ver cabecera. */
-export function windowCenterU(halfFrac: number): number {
+export function windowCenterU(halfFrac: number, aspect: number): number {
   const [a1, a2] = LEFT_SUBJECT_U;
   const [b1, b2] = RIGHT_SUBJECT_U;
+  if (aspect < PERSON_PRIORITY_MAX_ASPECT) {
+    // Ventana centrada en la persona, sin salirse de la imagen (una ventana
+    // más ancha que el sujeto queda pegada al borde izquierdo en vez de
+    // mostrar fuera de [0,1]).
+    return THREE.MathUtils.clamp((a1 + a2) / 2, halfFrac, 1 - halfFrac);
+  }
   const span = b2 - a1;
   const fraction = 2 * halfFrac;
   if (fraction >= span) {
@@ -226,7 +238,7 @@ function Layer({ src, z, fill }: LayerDef) {
     // Centro de ventana horizontal común a todas las capas (ver cabecera):
     // uCenter=0.5 = centrado (sin desplazamiento).
     const halfFracVisible = visibleWidth / (2 * planeWidth);
-    const uCenter = windowCenterU(halfFracVisible);
+    const uCenter = windowCenterU(halfFracVisible, aspect);
     const ixFinal = ix + (0.5 - uCenter) * planeWidth;
 
     mesh.position.set(ixFinal, iy, z);
