@@ -915,7 +915,7 @@ body:has(.worldRoot) .tmcFallback {
      (franja más oscura ≈ −35% o menos); la legibilidad del texto ya no
      depende de un fondo casi opaco sino del resplandor de text-shadow ajustado
      al glifo (ver .tmcFooter__heading / __hint / __socialIcons). */
-  background: linear-gradient(to top, rgba(6, 11, 24, 0.24), rgba(6, 11, 24, 0.05));
+  background: linear-gradient(to top, rgba(6, 11, 24, 0.05), rgba(6, 11, 24, 0));
   /* Explícito (no solo heredado): en las páginas de unidad, el ancestro
      .staticUnitPage__chrome ahora es pointer-events:none (fix Tema 2) — sin
      este auto, los links/íconos del footer heredarían none y dejarían de
@@ -924,8 +924,6 @@ body:has(.worldRoot) .tmcFallback {
   pointer-events: auto;
 }
 .tmcFooter__block {
-  position: relative;
-  isolation: isolate;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -935,17 +933,29 @@ body:has(.worldRoot) .tmcFallback {
   text-align: left;
   cursor: pointer;
 }
-/* Velo local difuso detrás de cada bloque de texto (Fase 2, Punto 6): oscurece
-   solo donde hay texto, más eficiente para la legibilidad que oscurecer toda
-   la franja del footer. */
-.tmcFooter__block::before {
+/* Velo local difuso detrás de cada LÍNEA de texto (Fase 2, Punto 6 y ronda
+   siguiente): oscurece solo donde hay texto — más eficiente para la
+   legibilidad que oscurecer toda la franja. Va por línea (align-self:
+   flex-start = ancho real del texto, no de la columna del grid): a nivel de
+   columna cubría ~400px para texto de 70–190px y la franja media perdía
+   −50/−65% de luminancia. El área clicable del botón no cambia. */
+.tmcFooter__heading,
+.tmcFooter__hint,
+.tmcFooter__socialIcons {
+  position: relative;
+  isolation: isolate;
+  align-self: flex-start;
+}
+.tmcFooter__heading::before,
+.tmcFooter__hint::before,
+.tmcFooter__socialIcons::before {
   content: "";
   position: absolute;
-  inset: -4px -14px;
+  inset: -8px -12px;
   z-index: -1;
-  border-radius: 14px;
-  background: rgba(6, 11, 24, 0.2);
-  filter: blur(9px);
+  border-radius: 12px;
+  background: rgba(6, 11, 24, 0.68);
+  filter: blur(6px);
   pointer-events: none;
 }
 .tmcFooter__block:hover .tmcFooter__heading {
@@ -956,7 +966,7 @@ body:has(.worldRoot) .tmcFallback {
   font-size: 16px;
   letter-spacing: 0.08em;
   color: var(--gold-light);
-  text-shadow: 0 0 1px #060b18, 0 0 2px #060b18, 0 0 3px rgba(6, 11, 24, 0.95), 0 0 4px rgba(6, 11, 24, 0.95), 0 0 6px rgba(6, 11, 24, 0.95), 0 0 8px rgba(6, 11, 24, 0.9), 0 0 10px rgba(6, 11, 24, 0.85), 0 0 14px rgba(6, 11, 24, 0.8), 0 0 20px rgba(6, 11, 24, 0.7);
+  text-shadow: 0 0 1px #060b18, 0 0 2px #060b18, 0 0 3px #060b18, 0 0 3px rgba(6, 11, 24, 0.95), 0 0 5px #060b18, 0 0 5px rgba(6, 11, 24, 0.95), 0 0 8px rgba(6, 11, 24, 0.95), 0 0 8px rgba(6, 11, 24, 0.9), 0 0 12px rgba(6, 11, 24, 0.9), 0 0 12px rgba(6, 11, 24, 0.85), 0 0 18px rgba(6, 11, 24, 0.85), 0 0 26px rgba(6, 11, 24, 0.75);
   transition: color 0.2s;
 }
 .tmcFooter__hint {
@@ -964,7 +974,7 @@ body:has(.worldRoot) .tmcFallback {
   letter-spacing: 0.03em;
   opacity: 1;
   line-height: 1.5;
-  text-shadow: 0 0 1px #060b18, 0 0 2px #060b18, 0 0 3px rgba(6, 11, 24, 0.95), 0 0 4px rgba(6, 11, 24, 0.95), 0 0 6px rgba(6, 11, 24, 0.95), 0 0 8px rgba(6, 11, 24, 0.9), 0 0 10px rgba(6, 11, 24, 0.85), 0 0 14px rgba(6, 11, 24, 0.8), 0 0 20px rgba(6, 11, 24, 0.7);
+  text-shadow: 0 0 1px #060b18, 0 0 2px #060b18, 0 0 3px #060b18, 0 0 3px rgba(6, 11, 24, 0.95), 0 0 5px #060b18, 0 0 5px rgba(6, 11, 24, 0.95), 0 0 8px rgba(6, 11, 24, 0.95), 0 0 8px rgba(6, 11, 24, 0.9), 0 0 12px rgba(6, 11, 24, 0.9), 0 0 12px rgba(6, 11, 24, 0.85), 0 0 18px rgba(6, 11, 24, 0.85), 0 0 26px rgba(6, 11, 24, 0.75);
 }
 .tmcFooter__socialIcons {
   display: flex;
