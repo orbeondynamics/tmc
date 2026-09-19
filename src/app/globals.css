@@ -145,7 +145,13 @@ body:has(.worldRoot) .tmcFallback {
   /* Legibilidad (diagnóstico REDTEAM): el header no tiene fondo propio, solo
      lo que haya detrás en la escena — mismo criterio ya usado en
      .unitLogo__tagline. */
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 1px 8px rgba(0, 0, 0, 0.6);
+  /* Fase 2 (Punto 3, legibilidad garantizada): medido ANTES sobre el
+     recorrido del Home, el contraste glifo/entorno era 2.2–2.6:1 (hasta 1.2:1
+     en el 10% más claro en mobile) sobre balcón/cielo claro. Tratamiento:
+     text-shadow más ajustado + un halo radial oscuro y suave (::before) que
+     baja la luminancia local detrás del glifo sin tocar el tamaño, el color
+     ni la forma del logo (estética discreta ya aprobada). */
+  text-shadow: 0 0 1px rgba(6, 11, 24, 1), 0 0 3px rgba(6, 11, 24, 0.95), 0 0 6px rgba(6, 11, 24, 0.9), 0 0 12px rgba(6, 11, 24, 0.7);
   border: 1px solid var(--hairline);
   border-radius: 50%;
   width: 40px;
@@ -154,6 +160,22 @@ body:has(.worldRoot) .tmcFallback {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  isolation: isolate;
+}
+.tmcHeader__home::before {
+  content: "";
+  position: absolute;
+  inset: -12px -16px;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse closest-side,
+    rgba(6, 11, 24, 0.7) 0%,
+    rgba(6, 11, 24, 0.6) 62%,
+    rgba(6, 11, 24, 0) 100%
+  );
 }
 /* Bug 5: "sin forma clara de volver a home" desde una unidad — el logo ya
    navegaba a "/" (confirmado con evidencia de código, sin cambios), pero
