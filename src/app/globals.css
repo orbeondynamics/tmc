@@ -777,7 +777,7 @@ body:has(.worldRoot) .tmcFallback {
    diámetro ANTERIOR del logo a escala 1 = 120px (constante de referencia,
    no cambia con este ajuste, solo se usa como unidad de medida para las
    demás distancias, igual que ya hacía el sistema con 140px/90px). Nuevo
-   diámetro = 1.5×D = 180px. Separación horizontal = 3×D = 360px medida
+   diámetro = 1.5×D = 180px. Separación horizontal = 2.5×D = 300px (decisión final del equipo; antes 3×D = 360px, dd18f5b) medida
    centro a centro desde el centro del aro (antes 140px). Desplazamiento
    vertical = 1×D = 120px hacia arriba aplicado a las 4 insignias por igual
    (antes ±90px simétrico arriba/abajo) — el TMC/aro NO se mueve, sigue en
@@ -809,16 +809,16 @@ body:has(.worldRoot) .tmcFallback {
    sigue en 50%/50% (WorldCanvas.tsx, HERO_RING_POSITION); tamaño 1.5×D y
    separación horizontal 3×D ya validadas, sin tocar. */
 .homeBadge--left.homeBadge--top {
-  transform: translate(calc(-50% - var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 110px));
+  transform: translate(calc(-50% - var(--hb-scale) * 300px), calc(-50% - var(--hb-scale) * 110px));
 }
 .homeBadge--right.homeBadge--top {
-  transform: translate(calc(-50% + var(--hb-scale) * 360px), calc(-50% - var(--hb-scale) * 110px));
+  transform: translate(calc(-50% + var(--hb-scale) * 300px), calc(-50% - var(--hb-scale) * 110px));
 }
 .homeBadge--left.homeBadge--bottom {
-  transform: translate(calc(-50% - var(--hb-scale) * 360px), calc(-50% + var(--hb-scale) * 110px));
+  transform: translate(calc(-50% - var(--hb-scale) * 300px), calc(-50% + var(--hb-scale) * 110px));
 }
 .homeBadge--right.homeBadge--bottom {
-  transform: translate(calc(-50% + var(--hb-scale) * 360px), calc(-50% + var(--hb-scale) * 110px));
+  transform: translate(calc(-50% + var(--hb-scale) * 300px), calc(-50% + var(--hb-scale) * 110px));
 }
 
 /* ---------- Logo oficial de operating unit (Master Handoff sección 11,
