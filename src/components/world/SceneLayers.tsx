@@ -42,21 +42,27 @@
 // angostos es inherente a un "cover" puramente centrado, no un defecto de
 // margen — hace falta descentrarlo.
 //
-// Corrección (mismo criterio de siempre — mecanismo continuo, función del
-// aspect ratio real, sin breakpoint): keepInViewU, opcional por capa, declara
-// el rango horizontal normalizado [0,1] del sujeto que esa capa NUNCA debe
-// dejar fuera de cuadro (con un pequeño margen de seguridad). Cada frame se
-// calcula cuánta fracción del ancho de la imagen entra en la ventana visible
-// actual (depende de distancia/FOV/aspect, igual que el resto de este
-// archivo) y, SOLO si el centrado por defecto (50%) dejaría ese rango fuera,
-// se calcula el desplazamiento horizontal MÍNIMO necesario para incluirlo
-// completo — nunca más de lo necesario. En aspects donde el centrado por
-// defecto ya alcanza a cubrir el rango (todo lo validado en 1366/1440/1920),
-// el desplazamiento calculado es exactamente 0 — cero cambio de composición
-// ahí, confirmado con captura. Solo se aplica a las 2 capas cuyo sujeto vive
-// lejos del centro (terraza/piscina/mobiliario y persona); el resto de capas
-// (cielo, skyline, agua, islas) no lo necesita y no se toca.
-
+// Fase 2 (Punto 5, cobertura y regla de reparto) — reemplaza a keepInViewU
+// por capa (que solo protegía a la persona, a la IZQUIERDA, y al desplazar la
+// ventana hacia ese lado empujaba palmera y lámpara, a la DERECHA, fuera de
+// cuadro en cualquier aspect). Ahora: (1) COVERAGE_MARGIN = 1.0 (el "cover"
+// exacto: a 16:9 se ve el 100% de la imagen); (2) UN solo centro de ventana
+// horizontal (uCenter) por frame, común a las 6 capas, que protege AMBOS
+// extremos — persona (izquierda, u 0.073–0.2285, medido en el alfa real) y
+// lámpara+palmera (derecha, u 0.933–1.0, medido en el alfa real):
+//   • si la ventana visible cabe ambos extremos completos, se usa el
+//     desplazamiento MÍNIMO desde el centro (0.5) que los incluye;
+//   • si NO caben (aspects angostos), el recorte se reparte de forma
+//     proporcional y simétrica: cada extremo pierde la MISMA fracción de su
+//     propio ancho — ninguno se sacrifica por completo mientras el otro queda
+//     intacto. Es continuo con el caso anterior. Cuando la ventana es tan
+//     angosta que no puede tocar ambos a la vez, se centra equidistante de
+//     los bordes internos de los dos sujetos (regla simétrica llevada al
+//     límite, sin agregar ninguna prioridad entre ellos).
+// Al ser el mismo centro para todas las capas quedan registradas entre sí
+// (antes terraza/persona iban ~49px desplazadas del resto, dejando ver el
+// fondo #060B18 por los cortes de las capas inferiores).
+//
 import { useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
@@ -64,7 +70,7 @@ import * as THREE from "three";
 import { tmcAssets } from "@/config/tmcAssets";
 
 const IMAGE_ASPECT = 1672 / 941;
-const SUBJECT_SAFETY_MARGIN_U = 0.03;
+// (Fase 2: ahora 1.0 — ver cabecera. Historia del valor anterior:)
 // Margen sobre el frustum "sin margen" (el que mapea el frustum real 1:1 al
 // alto completo de la imagen). Medido en navegador (Fase de diagnóstico):
 // con el valor anterior (2.0) el frustum real solo veía el 50% central de
@@ -76,37 +82,49 @@ const SUBJECT_SAFETY_MARGIN_U = 0.03;
 // los demás waypoints — ese margen solo necesita cubrir la variación de
 // pitch/distancia entre las 6 capas a distintas profundidades Z y un
 // pequeño colchón de seguridad.
-const COVERAGE_MARGIN = 1.15;
+const COVERAGE_MARGIN = 1.0;
 
 interface LayerDef {
   src: string;
   z: number;
-  /** Rango horizontal normalizado [uMin, uMax] (0=borde izquierdo de la
-   * imagen, 1=borde derecho) del sujeto que esta capa debe mantener siempre
-   * visible — medido por análisis real del canal alfa del asset, no a ojo.
-   * Omitido en capas sin un sujeto excéntrico que proteger. */
-  keepInViewU?: [number, number];
 }
 
-// Persona (person.webp): bounding box real del canal alfa, x = [0.0730,
-// 0.2273] del ancho de imagen (1672px) — medido con canvas.getImageData,
-// no estimado visualmente.
-const PERSON_U: [number, number] = [0.073, 0.2273];
+// Sujetos protegidos, rango horizontal normalizado [0,1] de la imagen
+// (0=borde izquierdo), medidos con el canal alfa real de los assets:
+// persona (person.webp) y lámpara+palmera derechas (terrace-pool-furniture.webp
+// / islands-vegetation.webp).
+const LEFT_SUBJECT_U: [number, number] = [0.073, 0.2285];
+const RIGHT_SUBJECT_U: [number, number] = [0.933, 1.0];
 
 const LAYERS: LayerDef[] = [
   { src: tmcAssets.layers.skyClouds, z: -40 },
   { src: tmcAssets.layers.miamiSkyline, z: -30 },
   { src: tmcAssets.layers.bayWater, z: -20 },
   { src: tmcAssets.layers.islandsVegetation, z: -12 },
-  // Mismo rango que la persona (no el suyo propio, que cubre casi todo el
-  // ancho, 0%-99.9%): lo que debe protegerse aquí es específicamente la
-  // franja de terraza/piscina INMEDIATA a la persona, para que ambas capas
-  // se desplacen juntas y no se vean desalineadas entre sí.
-  { src: tmcAssets.layers.terracePoolFurniture, z: -6, keepInViewU: PERSON_U },
-  { src: tmcAssets.layers.person, z: -2, keepInViewU: PERSON_U },
+  { src: tmcAssets.layers.terracePoolFurniture, z: -6 },
+  { src: tmcAssets.layers.person, z: -2 },
 ];
 
-function Layer({ src, z, keepInViewU }: LayerDef) {
+/** Centro horizontal (u, 0..1) de la ventana visible sobre la imagen.
+ * halfFrac = mitad de la fracción del ancho de imagen que entra en pantalla
+ * (depende solo del aspect y COVERAGE_MARGIN, no del scroll). Ver cabecera. */
+export function windowCenterU(halfFrac: number): number {
+  const [a1, a2] = LEFT_SUBJECT_U;
+  const [b1, b2] = RIGHT_SUBJECT_U;
+  const span = b2 - a1;
+  const fraction = 2 * halfFrac;
+  if (fraction >= span) {
+    // Caben ambos extremos completos: mínimo desplazamiento desde 0.5.
+    return THREE.MathUtils.clamp(0.5, b2 - halfFrac, a1 + halfFrac);
+  }
+  // No caben: cada extremo pierde la misma fracción k de su propio ancho.
+  const wL = a2 - a1;
+  const wR = b2 - b1;
+  const k = Math.min(1, (span - fraction) / (wL + wR));
+  return (a1 + b2) / 2 + (k * (wL - wR)) / 2;
+}
+
+function Layer({ src, z }: LayerDef) {
   const texture = useTexture(src);
   // Hallazgo 7 (color más claro que el original, confirmado comparando
   // contra master-background.webp — sí existe un master real, no fue
@@ -163,29 +181,11 @@ function Layer({ src, z, keepInViewU }: LayerDef) {
     );
     const planeWidth = requiredHeight * IMAGE_ASPECT;
 
-    // Desplazamiento horizontal mínimo (ver comentario de archivo arriba):
-    // por defecto la ventana visible queda centrada en u=0.5 (mesh.position.x
-    // = ix, sin desplazar — comportamiento idéntico al anterior). Si el
-    // sujeto declarado en keepInViewU no entra completo ahí, se recentra la
-    // ventana en el punto más cercano a 0.5 que sí lo incluye.
-    let ixFinal = ix;
-    if (keepInViewU) {
-      const halfFracVisible = visibleWidth / (2 * planeWidth);
-      const uMin = keepInViewU[0] - SUBJECT_SAFETY_MARGIN_U;
-      const uMax = keepInViewU[1] + SUBJECT_SAFETY_MARGIN_U;
-      // uCenter debe satisfacer uCenter-half<=uMin y uCenter+half>=uMax —
-      // es decir uCenter en [uMax-half, uMin+half]. Si ese rango es vacío
-      // (ventana visible más angosta que el propio sujeto+margen — no ocurre
-      // con los assets actuales en ningún ancho de escritorio razonable),
-      // se cae a centrar en el sujeto como mejor esfuerzo.
-      const uCenterLow = uMax - halfFracVisible;
-      const uCenterHigh = uMin + halfFracVisible;
-      const uCenter =
-        uCenterLow <= uCenterHigh
-          ? THREE.MathUtils.clamp(0.5, uCenterLow, uCenterHigh)
-          : (uMin + uMax) / 2;
-      ixFinal = ix + (0.5 - uCenter) * planeWidth;
-    }
+    // Centro de ventana horizontal común a todas las capas (ver cabecera):
+    // uCenter=0.5 = centrado (sin desplazamiento).
+    const halfFracVisible = visibleWidth / (2 * planeWidth);
+    const uCenter = windowCenterU(halfFracVisible);
+    const ixFinal = ix + (0.5 - uCenter) * planeWidth;
 
     mesh.position.set(ixFinal, iy, z);
     mesh.scale.setScalar(requiredHeight);
