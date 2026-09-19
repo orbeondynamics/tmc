@@ -65,7 +65,7 @@
 //
 import { useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { tmcAssets } from "@/config/tmcAssets";
 
@@ -87,6 +87,36 @@ const COVERAGE_MARGIN = 1.0;
 interface LayerDef {
   src: string;
   z: number;
+  /** Plano base de relleno (Fase 2, Punto 6): opaco, con UV extendidas y
+   * wrap espejo — ver FILL_PAD. */
+  fill?: boolean;
+}
+
+// Fase 2 (Punto 6, "0% de agujeros #060B18"): las 6 capas son recortes que
+// dejan huecos transparentes entre sí (5.75% del composite de las capas ya
+// era el fondo #060B18 con registro perfecto, medido contra
+// master-background.webp) y, con COVERAGE_MARGIN = 1.0, el pitch de la
+// cámara hero además deja ver ~25–35px de fondo en los bordes. Solución
+// robusta: un plano base con el master-background.webp original (la imagen
+// de la que salieron las capas) detrás de todo, con EXACTAMENTE la misma
+// transformación que las capas (mismo centro de ventana, misma escala:
+// queda registrado), así cualquier hueco muestra la foto real en su lugar.
+// Sus UV se extienden FILL_PAD (8%: cubre con holgura el keystone del hero,
+// ~3–4%) más allá de [0,1] con wrap espejo para continuar la imagen donde el
+// plano no llega. Con un pad grande el espejo se ve como duplicación en los
+// waypoints oblicuos (medido), por eso se limita al keystone.
+const FILL_PAD = 0.08;
+
+function extendedPlane(pad: number): THREE.PlaneGeometry {
+  const g = new THREE.PlaneGeometry(IMAGE_ASPECT * (1 + 2 * pad), 1 + 2 * pad);
+  const uv = g.attributes.uv;
+  const lo = -pad;
+  const hi = 1 + pad;
+  uv.setXY(0, lo, hi);
+  uv.setXY(1, hi, hi);
+  uv.setXY(2, lo, lo);
+  uv.setXY(3, hi, lo);
+  return g;
 }
 
 // Sujetos protegidos, rango horizontal normalizado [0,1] de la imagen
@@ -97,6 +127,7 @@ const LEFT_SUBJECT_U: [number, number] = [0.073, 0.2285];
 const RIGHT_SUBJECT_U: [number, number] = [0.933, 1.0];
 
 const LAYERS: LayerDef[] = [
+  { src: tmcAssets.masterBackground, z: -45, fill: true },
   { src: tmcAssets.layers.skyClouds, z: -40 },
   { src: tmcAssets.layers.miamiSkyline, z: -30 },
   { src: tmcAssets.layers.bayWater, z: -20 },
@@ -124,7 +155,7 @@ export function windowCenterU(halfFrac: number): number {
   return (a1 + b2) / 2 + (k * (wL - wR)) / 2;
 }
 
-function Layer({ src, z }: LayerDef) {
+function Layer({ src, z, fill }: LayerDef) {
   const texture = useTexture(src);
   // Hallazgo 7 (color más claro que el original, confirmado comparando
   // contra master-background.webp — sí existe un master real, no fue
@@ -146,6 +177,17 @@ function Layer({ src, z }: LayerDef) {
      colorSpace tras cargarla es el patrón oficial de la librería (mismo criterio ya
      aplicado a `camera` en CameraRig.tsx). */
   texture.colorSpace = THREE.SRGBColorSpace;
+  if (fill) {
+    /* eslint-disable react-hooks/immutability -- texture (three.js) es un objeto
+       imperativo del grafo de escena de R3F; el modo de wrap se declara una vez
+       tras cargarla, antes de su primera subida a GPU (mismo criterio que
+       colorSpace arriba). */
+    texture.wrapS = THREE.MirroredRepeatWrapping;
+    texture.wrapT = THREE.MirroredRepeatWrapping;
+    texture.needsUpdate = true;
+    /* eslint-enable react-hooks/immutability */
+  }
+  const fillGeometry = useMemo(() => (fill ? extendedPlane(FILL_PAD) : null), [fill]);
   const { camera, size } = useThree();
   const meshRef = useRef<THREE.Mesh>(null);
   const forward = useRef(new THREE.Vector3());
@@ -192,9 +234,9 @@ function Layer({ src, z }: LayerDef) {
   });
 
   return (
-    <mesh ref={meshRef}>
-      <planeGeometry args={[IMAGE_ASPECT, 1]} />
-      <meshBasicMaterial map={texture} transparent depthWrite={false} toneMapped={false} />
+    <mesh ref={meshRef} geometry={fillGeometry ?? undefined}>
+      {!fillGeometry && <planeGeometry args={[IMAGE_ASPECT, 1]} />}
+      <meshBasicMaterial map={texture} transparent={!fill} depthWrite={false} toneMapped={false} />
     </mesh>
   );
 }
